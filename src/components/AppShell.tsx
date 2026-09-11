@@ -16,6 +16,8 @@ import {
   X,
   Package,
   HelpCircle,
+  Boxes,
+  BookOpen,
 } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { ThemeToggle } from "./ThemeToggle";
@@ -36,8 +38,10 @@ const navItems = [
   { to: "/market", label: "Market", icon: ArrowLeftRight },
   { to: "/map", label: "Map", icon: MapIcon },
   { to: "/garage", label: "Garage", icon: Truck },
+  { to: "/inventory", label: "Inventory", icon: Boxes },
   { to: "/warehouse", label: "Warehouse", icon: Warehouse },
   { to: "/bank", label: "Bank", icon: Landmark },
+  { to: "/almanac", label: "Almanac", icon: BookOpen },
   { to: "/insights", label: "Insights", icon: Newspaper },
   { to: "/report", label: "Report", icon: ScrollText },
   { to: "/help", label: "Help", icon: HelpCircle },

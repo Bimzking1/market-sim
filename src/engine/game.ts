@@ -19,7 +19,7 @@ import {
   tickEvents,
 } from "./market";
 import { dailyInterest, tickLoans, updateCreditRating } from "./banking";
-import { spoilGoods } from "./perishable";
+import { spoilGoods, spoilLots } from "./perishable";
 import { gameStartDate } from "./calendar";
 import { buildScheduledEvents, toMarketEvents } from "./schedule";
 import { mulberry32, randomSeed } from "./rng";
@@ -72,6 +72,7 @@ export function createNewGame(seed?: number): GameState {
     selectedVehicleId: "vehicle_start",
     warehouses: [],
     inventory: {},
+    inventoryLots: {},
     staffHires: {},
     loans: [],
     cityMarkets,
@@ -205,6 +206,7 @@ export function advanceDay(state: GameState): GameState {
   const updatedWarehouses = state.warehouses.map((wh) => ({
     ...wh,
     inventory: spoilGoods(wh.inventory, 1, 0),
+    lots: spoilLots(wh.lots, 1, 0),
   }));
 
   const visitedCities = new Set(state.transactions.map((t) => t.cityId));

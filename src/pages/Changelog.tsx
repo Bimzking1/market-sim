@@ -3,6 +3,21 @@ import { ThemeToggle } from "../components/ThemeToggle";
 
 const changelog = [
   {
+    version: "2.5.0",
+    date: "2026-09-11",
+    changes: [
+      "Inventory page — lists every good you own across your vehicle and all warehouses, breaking each item into its purchase lots ('25 sacks bought at Rp 12.000') with the average price per unit and grand totals",
+      "Almanac page — a searchable commodity reference showing all goods and the cities they appear in, without revealing prices",
+      "50 commodities — 25 new staples (palm oil, tea, cocoa, banana, mango, chili, soybeans, tempeh, tofu, chicken, beef, eggs, milk, salt, cement, timber, glass, ceramics, paint, rope, nails, paper, batteries, car parts, fertilizer) plus 6 new regional specialties (Orchid, Lumpia, Apples, Durian, Lombok Pearls, Ulos Weave)",
+      "Local availability — common goods sell everywhere, but signature goods only appear where produced (Noken only in Jayapura); Market, buy/sell, and Insights are filtered to the current city, and the Map shows produced goods instead of other cities' prices",
+      "Warehouse agent buying — a 'Buy from other cities' panel on the Market lets you buy in any city where you own a warehouse (1.5% market fee + 6% agent fee), stored straight into that warehouse",
+      "Trading-lot prices — purchases are recorded as lots consumed FIFO on sell/store/withdraw/spoilage, shown on the Inventory page",
+      "Visible confirm buttons — purchase confirmations turn green, sales and costs turn red, on both the ticket and the dialog",
+      "Premium Wire panel moved up on Insights with the buy button in its header",
+      "Save format v3 with inventory and warehouse lots; older v2 saves are migrated on load",
+    ],
+  },
+  {
     version: "2.4.0",
     date: "2026-09-11",
     changes: [

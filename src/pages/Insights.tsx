@@ -6,8 +6,8 @@ import { confirmAction } from "../components/ConfirmDialog";
 import { toast } from "../components/Toast";
 import { ALL_STAFF_IDS, STAFF, staffContractCost } from "../engine/staff";
 import { predictPriceDirections } from "../engine/market";
-import { COMMODITIES, ALL_COMMODITY_IDS } from "../engine/commodities";
-import { ALL_CITY_IDS, CITIES } from "../engine/cities";
+import { COMMODITIES } from "../engine/commodities";
+import { ALL_CITY_IDS, CITIES, availableCommoditiesForCity } from "../engine/cities";
 import { activeScheduledForDay, leakedUpcomingForDay, daysUntilStart } from "../engine/schedule";
 import { formatDateForDay, formatMonthYear } from "../engine/calendar";
 import { formatFullRp } from "../utils/format";
@@ -55,9 +55,11 @@ export function Insights() {
     mulberry32
   );
 
-  const cityName = currentCity.charAt(0).toUpperCase() + currentCity.slice(1);
+  const cityName = CITIES[currentCity]?.name ?? currentCity;
 
-  const ranked = ALL_COMMODITY_IDS.map((cid) => ({
+  const availableHere = availableCommoditiesForCity(currentCity);
+
+  const ranked = availableHere.map((cid) => ({
     cid,
     def: COMMODITIES[cid],
     forecast: forecasts[cid],
@@ -232,6 +234,39 @@ export function Insights() {
         </ReadoutPanel>
       </div>
 
+      <ReadoutPanel
+        eyebrow="Premium wire"
+        title="Paid desk reports"
+        action={
+          <button
+            type="button"
+            disabled={!riser && !faller}
+            onClick={handleBuyNews}
+            className="flex items-center gap-2 border border-ink-600 px-3 py-2 text-[12px] font-medium text-brass-200 hover:border-brass-400 hover:bg-brass-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Newspaper size={14} strokeWidth={1.75} />
+            Buy one story · Rp 1.000
+          </button>
+        }
+      >
+        <p className="mb-3 text-[13px] text-mist-400">
+          Rp 1.000 per story. Reputable. Mostly. Daily paper employees read it.
+        </p>
+        {paidNews.length > 0 && (
+          <div className="space-y-3">
+            {paidNews.map((n, i) => (
+              <div key={i} className="border-l-2 border-ink-500 pl-3">
+                <p className="text-[14px] text-paper-100">
+                  {n.joke && <span className="mr-1.5 text-[12px] text-brass-400">Spoof</span>}
+                  {n.title}
+                </p>
+                <p className="text-[13px] text-mist-400">{n.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </ReadoutPanel>
+
       <ReadoutPanel eyebrow="Forecast desk" title="Calendar & rare conditions">
         {activeScheduled.length === 0 && upcomingScheduled.length === 0 ? (
           <p className="text-[14px] text-mist-400">
@@ -308,34 +343,6 @@ export function Insights() {
         )}
       </ReadoutPanel>
 
-      <ReadoutPanel eyebrow="Premium wire" title="Paid desk reports">
-        <p className="mb-3 text-[13px] text-mist-400">
-          Rp 1.000 per story. Reputable. Mostly. Daily paper employees read it.
-        </p>
-        {paidNews.length > 0 && (
-          <div className="mb-4 space-y-3">
-            {paidNews.map((n, i) => (
-              <div key={i} className="border-l-2 border-ink-500 pl-3">
-                <p className="text-[14px] text-paper-100">
-                  {n.joke && <span className="mr-1.5 text-[12px] text-brass-400">Spoof</span>}
-                  {n.title}
-                </p>
-                <p className="text-[13px] text-mist-400">{n.body}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          disabled={!riser && !faller}
-          onClick={handleBuyNews}
-          className="flex items-center gap-2 border border-ink-600 px-3 py-1.5 text-[12px] text-brass-300 hover:border-brass-400 hover:bg-brass-400/10 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Newspaper size={14} strokeWidth={1.75} />
-          Buy one story · Rp 1.000
-        </button>
-      </ReadoutPanel>
-
       {analystsHired && (
         <ReadoutPanel eyebrow="Market Analyst report" title="Price forecast">
           <div className="overflow-x-auto">
@@ -369,7 +376,7 @@ export function Insights() {
       {cargoManagerHired && (
         <ReadoutPanel eyebrow="Govt. Cargo Manager report" title="Buy & sell cities">
           <ul className="divide-y divide-ink-700">
-            {ALL_COMMODITY_IDS.map((cid) => {
+            {availableHere.map((cid) => {
               const def = COMMODITIES[cid];
               let bestCity: CityId | null = null;
               let bestPrice = -1;
