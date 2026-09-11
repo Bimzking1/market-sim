@@ -68,10 +68,28 @@ export function Report() {
         </PaperPanel>
 
         <div className="space-y-6">
-          <ReadoutPanel
-            eyebrow="Rank"
-            title={`#${rank} this season`}
-          />
+          <ReadoutPanel eyebrow="Rank" title={`#${rank} this season`}>
+            <div className="space-y-2">
+              <p className="text-[12px] text-mist-400">
+                Final standing relative to all merchants who started a venture
+                this season.
+              </p>
+              {(() => {
+                const pct = Math.min(
+                  100,
+                  Math.max(0, (playerNetWorth / STARTING_CAPITAL - 1) * 50)
+                );
+                return (
+                  <div className="h-1.5 overflow-hidden bg-ink-600">
+                    <div
+                      className="h-full bg-brass-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                );
+              })()}
+            </div>
+          </ReadoutPanel>
 
           <ReadoutPanel title="Highlights">
             <dl className="space-y-3 text-[14px]">

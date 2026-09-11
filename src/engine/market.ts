@@ -317,7 +317,7 @@ export function predictPriceDirections(
   const downDays: Partial<Record<CommodityId, number>> = {};
   const closes: Partial<Record<CommodityId, number>> = {};
 
-  const futures: Record<CityId, CityMarketState> = {};
+  const futures = {} as Record<CityId, CityMarketState>;
   for (const c of Object.keys(markets) as CityId[]) {
     futures[c] = cloneMarket(markets[c]);
   }

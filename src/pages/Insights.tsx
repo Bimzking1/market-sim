@@ -12,9 +12,9 @@ import { activeScheduledForDay, leakedUpcomingForDay, daysUntilStart } from "../
 import { formatDateForDay, formatMonthYear } from "../engine/calendar";
 import { formatFullRp } from "../utils/format";
 import { mulberry32 } from "../engine/rng";
-import type { CommodityId, PriceForecast, ScheduledEvent } from "../types";
+import type { CityId, CommodityId, PriceForecast, ScheduledEvent } from "../types";
 
-function describeScheduled(e: ScheduledEvent, startDate: number): string {
+function describeScheduled(e: ScheduledEvent): string {
   const comm = COMMODITIES[e.commodityId].name;
   const city = CITIES[e.cityId].name;
   const when = formatMonthYear(new Date(e.startDateISO));
@@ -248,7 +248,7 @@ export function Insights() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-[14px] text-paper-100">
-                    {COMMODITIES[e.commodityId].emoji} {describeScheduled(e, startDate)}
+                    {COMMODITIES[e.commodityId].emoji} {describeScheduled(e)}
                   </p>
                   <span
                     className={`shrink-0 text-[11px] uppercase tracking-wide ${
@@ -282,7 +282,7 @@ export function Insights() {
                         }`}
                       >
                         <p className="text-[14px] text-paper-100">
-                          {COMMODITIES[e.commodityId].emoji} {describeScheduled(e, startDate)}
+{COMMODITIES[e.commodityId].emoji} {describeScheduled(e)}
                         </p>
                         <p className="text-[12px] text-mist-400">
                           {days === 0

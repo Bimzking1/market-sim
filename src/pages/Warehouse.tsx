@@ -18,7 +18,7 @@ import {
 import { COMMODITIES } from "../engine/commodities";
 import { CITIES, ALL_CITY_IDS, CITY_COST_MULTIPLIER } from "../engine/cities";
 import { formatFullRp } from "../utils/format";
-import type { CityId, CommodityId } from "../types";
+import type { CityId, CommodityId, WarehouseTypeId } from "../types";
 
 export function WarehousePage() {
   const warehouses = useGameStore((s) => s.warehouses);
@@ -215,7 +215,7 @@ export function WarehousePage() {
 
       {warehouses.length > 0 && Object.keys(inventory).length > 0 && (
         <ReadoutPanel title="Store goods">
-          <StoreGoodsPanel warehouses={warehouses} inventory={inventory} currentCity={currentCity} playerCash={playerCash} />
+          <StoreGoodsPanel warehouses={warehouses} inventory={inventory} currentCity={currentCity} />
         </ReadoutPanel>
       )}
 
@@ -312,12 +312,16 @@ function StoreGoodsPanel({
   warehouses,
   inventory,
   currentCity,
-  playerCash,
 }: {
-  warehouses: { id: string; cityId: CityId; inventory: Partial<Record<CommodityId, number>>; capacity: number }[];
+  warehouses: {
+    id: string;
+    typeId: WarehouseTypeId;
+    cityId: CityId;
+    inventory: Partial<Record<CommodityId, number>>;
+    capacity: number;
+  }[];
   inventory: Partial<Record<CommodityId, number>>;
   currentCity: CityId;
-  playerCash: number;
 }) {
   const actions = useGameStore((s) => s.actions);
   const [targetWhId, setTargetWhId] = useState<string>(warehouses[0]?.id ?? "");

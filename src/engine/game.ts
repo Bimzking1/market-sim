@@ -1,9 +1,7 @@
 import type {
   GameState,
-  CityId,
   CommodityId,
   Vehicle,
-  Warehouse,
   LedgerLine,
   Objective,
   Transaction,
@@ -12,10 +10,7 @@ import type {
 import { ALL_CITY_IDS, CITY_COST_MULTIPLIER } from "./cities";
 import { COMMODITIES } from "./commodities";
 import { VEHICLES } from "./vehicles";
-import {
-  WAREHOUSES,
-  warehouseUsedCapacity,
-} from "./warehouses";
+import { WAREHOUSES } from "./warehouses";
 import { STAFF } from "./staff";
 import {
   initCityMarket,
@@ -23,12 +18,11 @@ import {
   tryGenerateEvent,
   tickEvents,
 } from "./market";
-import { calcTripExpenses, travelDays, degradeVehicle } from "./travel";
 import { dailyInterest, tickLoans, updateCreditRating } from "./banking";
 import { spoilGoods } from "./perishable";
 import { gameStartDate } from "./calendar";
 import { buildScheduledEvents, toMarketEvents } from "./schedule";
-import { mulberry32, randomSeed, rngRange, rngInt, rngPick } from "./rng";
+import { mulberry32, randomSeed } from "./rng";
 import type { Loan } from "../types";
 
 const TOTAL_DAYS = 180;

@@ -1,4 +1,4 @@
-import type { CommodityId, CommodityDef } from "../types";
+import type { CommodityId } from "../types";
 import { COMMODITIES } from "./commodities";
 
 export function spoilGoods(
