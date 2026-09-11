@@ -80,7 +80,7 @@ export interface CityDef {
   region: RegionId;
   produces: CommodityId[];
   consumes: CommodityId[];
-  distance: Record<CityId, number>;
+  distance: Partial<Record<CityId, number>>;
 }
 
 export interface VehicleDef {

@@ -3,7 +3,6 @@ import { ReadoutPanel } from "../components/Panel";
 import { confirmAction } from "../components/ConfirmDialog";
 import { toast } from "../components/Toast";
 import { CITIES, ALL_CITY_IDS, getDistance } from "../engine/cities";
-import { VEHICLES } from "../engine/vehicles";
 import { calcTripExpenses, travelDays } from "../engine/travel";
 import { COMMODITIES } from "../engine/commodities";
 import { formatFullRp } from "../utils/format";

@@ -1,7 +1,7 @@
 import { useGameStore } from "../store/gameStore";
 import { PaperPanel, ReadoutPanel } from "../components/Panel";
 import { confirmAction } from "../components/ConfirmDialog";
-import { formatFullRp, formatSignedRp } from "../utils/format";
+import { formatFullRp } from "../utils/format";
 import { maxLoanAmount } from "../engine/banking";
 import { formatDateForDay } from "../engine/calendar";
 import { useState } from "react";

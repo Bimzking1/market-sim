@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { Sun, Moon } from "lucide-react";
 
 const changelog = [
   {

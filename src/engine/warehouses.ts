@@ -44,7 +44,11 @@ export const DELEGATION_FEE_RATE = 0.06;
 export function warehouseUsedCapacity(
   inventory: Partial<Record<string, number>>
 ): number {
-  return Object.values(inventory).reduce((sum, v) => sum + (v ?? 0), 0);
+  let total = 0;
+  for (const v of Object.values(inventory)) {
+    total += v ?? 0;
+  }
+  return total;
 }
 
 export function warehouseCapacity(

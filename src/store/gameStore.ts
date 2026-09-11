@@ -21,12 +21,12 @@ import {
 import { STAFF, staffContractCost } from "../engine/staff";
 import { getDistance, CITY_COST_MULTIPLIER } from "../engine/cities";
 import { calcTripExpenses, travelDays, degradeVehicle } from "../engine/travel";
-import { calcPrice, applyTradeImpact } from "../engine/market";
+import { applyTradeImpact } from "../engine/market";
 import { createLoan, repayLoan } from "../engine/banking";
 import { createNewGame, advanceDay, calcNetWorth } from "../engine/game";
 import { buildScheduledEvents } from "../engine/schedule";
 import { DAY_MS } from "../engine/calendar";
-import { mulberry32, rngRange, rngInt } from "../engine/rng";
+import { mulberry32, rngInt } from "../engine/rng";
 
 interface GameStore extends GameState {
   actions: {
@@ -67,7 +67,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const market = state.cityMarkets[state.currentCity];
       const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
       const totalCost = quantity * price;
-      const transport = 0;
       const fee = Math.round(totalCost * 0.015);
       const netCost = totalCost + fee;
 
@@ -125,7 +124,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const market = state.cityMarkets[state.currentCity];
       const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
       const totalRevenue = quantity * price;
-      const transport = 0;
       const fee = Math.round(totalRevenue * 0.015);
       const netRevenue = totalRevenue - fee;
 
@@ -172,7 +170,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       if (expenses.total > state.playerCash) return;
 
-      const { condition, brokeDown } = degradeVehicle(vehicle, getDistance(state.currentCity, cityId), mulberry32(state.seed + state.currentDay * 7));
+      const { condition } = degradeVehicle(vehicle, getDistance(state.currentCity, cityId), mulberry32(state.seed + state.currentDay * 7));
 
       const newVehicles = state.vehicles.map((v) =>
         v.id === vehicle.id
@@ -180,7 +178,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           : v
       );
 
-      const cargoUnits = Object.values(state.inventory).reduce((s, v) => s + v, 0);
       const vehicleDef = VEHICLES[vehicle.typeId];
       const perishableProtection = vehicleDef.perishableProtection;
 
@@ -419,7 +416,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     buyNews: () => {
       const state = get();
-      if (state.gameOver) return;
+      if (state.gameOver) return false;
       if (state.playerCash < 1_000) return false;
       const newCash = state.playerCash - 1_000;
       set({
