@@ -1,0 +1,61 @@
+import type { VehicleDef, VehicleTypeId } from "../types";
+
+export const VEHICLES: Record<VehicleTypeId, VehicleDef> = {
+  motorcycle: {
+    id: "motorcycle",
+    name: "Motorcycle",
+    price: 15_000_000,
+    capacity: 50,
+    fuelEfficiency: 0.8,
+    speed: 1,
+    maintenanceCost: 50_000,
+    reliability: 0.92,
+    perishableProtection: 0,
+  },
+  pickup: {
+    id: "pickup",
+    name: "Pickup Truck",
+    price: 85_000_000,
+    capacity: 200,
+    fuelEfficiency: 0.6,
+    speed: 1,
+    maintenanceCost: 200_000,
+    reliability: 0.95,
+    perishableProtection: 0.1,
+  },
+  truck: {
+    id: "truck",
+    name: "Truck",
+    price: 250_000_000,
+    capacity: 600,
+    fuelEfficiency: 0.35,
+    speed: 0.8,
+    maintenanceCost: 500_000,
+    reliability: 0.93,
+    perishableProtection: 0.15,
+  },
+  refrigerated_truck: {
+    id: "refrigerated_truck",
+    name: "Refrigerated Truck",
+    price: 450_000_000,
+    capacity: 500,
+    fuelEfficiency: 0.25,
+    speed: 0.75,
+    maintenanceCost: 800_000,
+    reliability: 0.9,
+    perishableProtection: 0.7,
+  },
+  container_truck: {
+    id: "container_truck",
+    name: "Container Truck",
+    price: 650_000_000,
+    capacity: 1500,
+    fuelEfficiency: 0.15,
+    speed: 0.6,
+    maintenanceCost: 1_200_000,
+    reliability: 0.88,
+    perishableProtection: 0.3,
+  },
+};
+
+export const ALL_VEHICLE_TYPE_IDS = Object.keys(VEHICLES) as VehicleTypeId[];
