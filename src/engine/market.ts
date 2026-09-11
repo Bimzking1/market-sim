@@ -6,7 +6,12 @@ import type {
   PriceForecast,
 } from "../types";
 import { COMMODITIES, ALL_COMMODITY_IDS } from "./commodities";
-import { CITIES, CITY_PRODUCE_MAP, CITY_CONSUME_MAP } from "./cities";
+import {
+  CITIES,
+  CITY_PRODUCE_MAP,
+  CITY_CONSUME_MAP,
+  citySellsCommodity,
+} from "./cities";
 import type { RNG } from "./rng";
 import { rngRange, rngChance, rngInt, rngPick } from "./rng";
 
@@ -27,6 +32,8 @@ export function initCityMarket(
   const priceHistory: Partial<Record<CommodityId, number[]>> = {};
 
   for (const cid of ALL_COMMODITY_IDS) {
+    if (!citySellsCommodity(cityId, cid)) continue;
+
     const def = COMMODITIES[cid];
     const isProducer = produces.includes(cid);
     const isConsumer = consumes.includes(cid);
@@ -78,6 +85,7 @@ export function simulateMarketTick(
     const consumes = CITY_CONSUME_MAP[cityId] ?? [];
 
     for (const cid of ALL_COMMODITY_IDS) {
+      if (!citySellsCommodity(cityId, cid)) continue;
       const def = COMMODITIES[cid];
 
       let currentSupply = market.supply[cid] ?? BASE_SUPPLY;

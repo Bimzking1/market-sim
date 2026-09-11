@@ -2,6 +2,23 @@
 
 All notable changes to Kongsi — Trading Economy Game.
 
+## [2.5.0] — 2026-09-11
+
+### Added
+
+- **Inventory page** — A new /inventory tab lists every good you own across your vehicle and all owned warehouses. Each item breaks down into its purchase lots ("25 sacks bought at Rp 12.000") plus the average price paid per unit, with grand totals for units, purchase value, and average cost
+- **Almanac page** — A new /almanac commodity reference shows all goods and the cities they appear in — common goods sold everywhere, signature goods only where produced — with a search box. It never reveals prices: those are only known once you travel
+- **50 commodities** — 25 new staple goods (palm oil, tea, cocoa, banana, mango, chili, soybeans, tempeh, tofu, chicken, beef, eggs, milk, salt, cement, timber, glass, ceramics, paint, rope, nails, paper, batteries, car parts, fertilizer) join the market, plus 6 new regional specialties (Orchid, Lumpia, Apples, Durian, Lombok Pearls, Ulos Weave)
+- **Local availability** — Common goods sell in every city, but each signature good only appears where it is produced (e.g. Noken only in Jayapura). Market lists, buy/sell actions, and Insights tables are filtered to the current city; the Map now shows a city's produced goods instead of leaking other cities' prices
+- **Warehouse agent buying** — The Market page has a "Buy from other cities" panel: if you own a warehouse in another city you can buy its goods remotely (1.5% market fee + 6% agent fee) and have them stored straight into that warehouse
+- **Trading-lot prices** — Every purchase is recorded as a lot with its unit price; selling, storing, withdrawing, and spoilage consume lots FIFO, and the Inventory page reports them
+- **Visible confirm buttons** — Trade confirmations are now color-coded: green (jade) for purchases, red (rust) for sales and other costs, on both the ticket and the confirmation dialog
+- **Premium Wire moved up** — The Insights "Paid desk reports" panel now sits right below the top grid with the buy button in its header
+
+### Changed
+
+- **Save format v3** — Saves now include inventory lots and warehouse lots; older v2 saves are migrated on load
+
 ## [2.4.0] — 2026-09-11
 
 ### Added

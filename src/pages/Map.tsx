@@ -2,23 +2,22 @@ import { useGameStore } from "../store/gameStore";
 import { ReadoutPanel } from "../components/Panel";
 import { confirmAction } from "../components/ConfirmDialog";
 import { toast } from "../components/Toast";
-import { CITIES, ALL_CITY_IDS, getDistance } from "../engine/cities";
+import { CITIES, ALL_CITY_IDS, CITY_PRODUCE_MAP, getDistance } from "../engine/cities";
 import { calcTripExpenses, travelDays } from "../engine/travel";
 import { COMMODITIES } from "../engine/commodities";
 import { formatFullRp } from "../utils/format";
 import { mulberry32 } from "../engine/rng";
-import type { CityId, CommodityId } from "../types";
+import type { CityId } from "../types";
 
 export function Map() {
   const currentCity = useGameStore((s) => s.currentCity);
   const vehicles = useGameStore((s) => s.vehicles);
   const selectedVehicleId = useGameStore((s) => s.selectedVehicleId);
   const playerCash = useGameStore((s) => s.playerCash);
-  const cityMarkets = useGameStore((s) => s.cityMarkets);
   const actions = useGameStore((s) => s.actions);
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
-  const cityName = currentCity.charAt(0).toUpperCase() + currentCity.slice(1);
+  const cityName = CITIES[currentCity]?.name ?? currentCity;
 
   return (
     <div className="space-y-6">
@@ -44,7 +43,6 @@ export function Map() {
               currentCity={currentCity}
               vehicle={selectedVehicle}
               cash={playerCash}
-              market={cityMarkets[cityId]}
               onTravel={async () => actions.travelTo(cityId)}
             />
           ))}
@@ -59,14 +57,12 @@ function CityCard({
   currentCity,
   vehicle,
   cash,
-  market,
   onTravel,
 }: {
   cityId: CityId;
   currentCity: CityId;
   vehicle: any;
   cash: number;
-  market: any;
   onTravel: () => void;
 }) {
   const def = CITIES[cityId];
@@ -76,21 +72,9 @@ function CityCard({
   const canAfford = expenses.total <= cash;
   const depotOrShip = CITIES[currentCity].region !== def.region ? "Ship" : "Depot";
 
-  const topPrices = (Object.keys(market.prices) as CommodityId[])
-    .map((cid) => ({
-      name: `${COMMODITIES[cid].emoji} ${COMMODITIES[cid].name}`,
-      price: market.prices[cid],
-    }))
-    .sort((a, b) => b.price - a.price)
-    .slice(0, 3);
-
-  const lowestPrices = (Object.keys(market.prices) as CommodityId[])
-    .map((cid) => ({
-      name: `${COMMODITIES[cid].emoji} ${COMMODITIES[cid].name}`,
-      price: market.prices[cid],
-    }))
-    .sort((a, b) => a.price - b.price)
-    .slice(0, 3);
+  const produced = (CITY_PRODUCE_MAP[cityId] ?? []).map((cid) => ({
+    name: `${COMMODITIES[cid].emoji} ${COMMODITIES[cid].name}`,
+  }));
 
   const handleTravel = async () => {
     const tollLabel = depotOrShip === "Ship" ? "Port fee" : "Toll";
@@ -140,23 +124,21 @@ function CityCard({
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 text-[12px]">
-        <div>
-          <p className="text-jade-400 mb-1">High prices</p>
-          {topPrices.map((p) => (
-            <p key={p.name} className="text-mist-300">
-              {p.name}: {formatFullRp(p.price)}
-            </p>
-          ))}
-        </div>
-        <div>
-          <p className="text-rust-400 mb-1">Low prices</p>
-          {lowestPrices.map((p) => (
-            <p key={p.name} className="text-mist-300">
-              {p.name}: {formatFullRp(p.price)}
-            </p>
-          ))}
-        </div>
+      <div className="mb-3 text-[12px]">
+        <p className="mb-1 text-jade-400">Goods produced here</p>
+        {produced.length === 0 ? (
+          <p className="text-mist-500">
+            A trading outpost — prices are only known once you arrive.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {produced.map((p) => (
+              <span key={p.name} className="text-mist-300">
+                {p.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <button

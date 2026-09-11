@@ -8,6 +8,8 @@ import { Market } from "./pages/Market";
 import { Map } from "./pages/Map";
 import { Garage } from "./pages/Garage";
 import { WarehousePage } from "./pages/Warehouse";
+import { Inventory } from "./pages/Inventory";
+import { Almanac } from "./pages/Almanac";
 import { Bank } from "./pages/Bank";
 import { Report } from "./pages/Report";
 import { Insights } from "./pages/Insights";
@@ -38,8 +40,10 @@ export default function App() {
           <Route path="/market" element={<Market />} />
           <Route path="/map" element={<Map />} />
           <Route path="/garage" element={<Garage />} />
+          <Route path="/inventory" element={<Inventory />} />
           <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/bank" element={<Bank />} />
+          <Route path="/almanac" element={<Almanac />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/help" element={<Help />} />
           <Route path="/report" element={<Report />} />

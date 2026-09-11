@@ -17,7 +17,38 @@ export type CommodityId =
   | "jewelry"
   | "silk"
   | "nutmeg"
-  | "noken";
+  | "noken"
+  | "palm_oil"
+  | "tea"
+  | "cocoa"
+  | "banana"
+  | "mango"
+  | "chili"
+  | "soybeans"
+  | "tempeh"
+  | "tofu"
+  | "chicken"
+  | "beef"
+  | "eggs"
+  | "milk"
+  | "salt"
+  | "cement"
+  | "timber"
+  | "glass"
+  | "ceramics"
+  | "paint"
+  | "rope"
+  | "nails"
+  | "paper"
+  | "batteries"
+  | "carparts"
+  | "fertilizer"
+  | "orchid"
+  | "lumpia"
+  | "apples"
+  | "durian"
+  | "pearls"
+  | "ulos";
 
 export type CityId =
   | "bandung"
@@ -71,6 +102,16 @@ export interface CommodityDef {
   perishable: boolean;
   spoilRate: number;
   category: "food" | "industrial" | "luxury" | "fuel" | "medical";
+  /**
+   * When true the good is sold in every city. When false it only appears in
+   * the cities listed in that city's "produces" table (see the Almanac page).
+   */
+  availableEverywhere: boolean;
+}
+
+export interface InventoryLot {
+  qty: number;
+  unitPrice: number;
 }
 
 export interface CityDef {
@@ -147,6 +188,7 @@ export interface Warehouse {
   typeId: WarehouseTypeId;
   cityId: CityId;
   inventory: Partial<Record<CommodityId, number>>;
+  lots: Partial<Record<CommodityId, InventoryLot[]>>;
   level: number;
   capacity: number;
 }
@@ -191,6 +233,7 @@ export interface Transaction {
   unitPrice: number;
   total: number;
   cityId: CityId;
+  remote?: boolean;
 }
 
 export interface FinalReport {
@@ -247,6 +290,7 @@ export interface GameState {
 
   warehouses: Warehouse[];
   inventory: Partial<Record<CommodityId, number>>;
+  inventoryLots: Partial<Record<CommodityId, InventoryLot[]>>;
 
   staffHires: Partial<Record<StaffId, number>>;
 

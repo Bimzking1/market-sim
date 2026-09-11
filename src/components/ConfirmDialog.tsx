@@ -13,6 +13,7 @@ export interface ConfirmConfig {
   description?: string;
   confirmLabel?: string;
   danger?: boolean;
+  tone?: "good" | "danger";
   currentCash?: number;
   cashChange?: number;
   lines?: ConfirmLine[];
@@ -49,6 +50,15 @@ export function ConfirmDialog() {
     cfg.cashChange !== undefined;
   const after =
     showCash ? cfg.currentCash! + cfg.cashChange! : undefined;
+
+  const confirmTone =
+    cfg.tone === "good"
+      ? "bg-jade-500/90 text-ink-950 hover:bg-jade-400"
+      : cfg.tone === "danger"
+      ? "bg-rust-500/90 text-ink-950 hover:bg-rust-400"
+      : cfg.danger
+      ? "bg-rust-500/25 text-rust-300 hover:bg-rust-500/35"
+      : "bg-brass-400/15 text-brass-300 hover:bg-brass-400/25";
 
   return (
     <div
@@ -133,11 +143,7 @@ export function ConfirmDialog() {
           <button
             type="button"
             onClick={() => { playSfx("check"); closeConfirm(true); }}
-            className={`flex-1 px-4 py-2.5 text-[14px] font-medium ${
-              cfg.danger
-                ? "bg-rust-500/25 text-rust-300 hover:bg-rust-500/35"
-                : "bg-brass-400/15 text-brass-300 hover:bg-brass-400/25"
-            }`}
+            className={`flex-1 px-4 py-2.5 text-[14px] font-medium ${confirmTone}`}
           >
             {cfg.confirmLabel ?? "Confirm"}
           </button>

@@ -88,6 +88,36 @@ const ENTRIES: HelpEntry[] = [
     tags: ["warehouse", "upgrade", "expand", "level", "capacity"],
   },
   {
+    question: "What does the Inventory page show?",
+    answer:
+      "Inventory lists every good you own across your current vehicle and all owned warehouses. Each item breaks down into the purchase lots it came from — for example '25 sacks bought at Rp 12.000, 10 sacks bought at Rp 15.000' — plus the average price you paid per unit. Use it to see what each load cost you before you choose where to sell.",
+    tags: ["inventory", "lots", "cargo", "average", "purchase price", "stock"],
+  },
+  {
+    question: "Why can't I buy or sell some goods in this city?",
+    answer:
+      "Common goods are sold in every city, but each signature good only appears in the cities that produce it — for example noken bags are only sold in Jayapura, and rendang is only sold in Padang. The Market only shows goods traded here, and you can't sell goods that this city doesn't trade. The Almanac shows exactly where each good appears.",
+    tags: ["available", "availability", "sold", "not sold", "signature", "where"],
+  },
+  {
+    question: "What is the Almanac?",
+    answer:
+      "The Almanac is a reference of all 50 goods and the cities they appear in. Signature goods are listed with the cities that sell them; common goods note that they're sold everywhere. It never reveals prices — those are a trader's secret until you travel to a city and open its Market.",
+    tags: ["almanac", "reference", "list", "goods", "cities", "where"],
+  },
+  {
+    question: "How do I buy goods in another city without travelling?",
+    answer:
+      "Own a warehouse in that city, then use the 'Buy from other cities' panel at the bottom of the Market page. Pick the warehouse city, the goods, and the quantity. The deal costs the 1.5% market fee plus a 6% agent (delegation) fee, and the goods are stored straight into that warehouse. You can't buy remotely into a city where you have no warehouse.",
+    tags: ["remote", "agent", "delegate", "buy from", "other city", "online"],
+  },
+  {
+    question: "Which goods are perishable?",
+    answer:
+      "Perishable goods spoil over time: fish lose 8% a day, milk 8%, while rice loses 3%, medicine 2%, and other foods 4–6%. Perishables also spoil during travel unless your vehicle has perishable protection. Warehouses protect stored goods from spoiling.",
+    tags: ["spoil", "perishable", "rot", "expire", "fresh"],
+  },
+  {
     question: "What is the credit rating?",
     answer:
       "Your credit rating starts at 600 and scales to 900. It rises slowly when you have no loans and falls sharply when loans become due soon or overdue. It determines your maximum loan amount: Rp 10M × (0.5 + rating / 200).",
@@ -210,8 +240,8 @@ export function Help() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Fact label="Game length" value="180 days" />
         <Fact label="Starting cash" value="Rp 10.000.000" />
-        <Fact label="Cities" value="8" />
-        <Fact label="Commodities" value="11" />
+        <Fact label="Cities" value="18" />
+        <Fact label="Commodities" value="50" />
       </div>
 
       <ReadoutPanel eyebrow="Knowledge base" title={`${filtered.length} articles`}>

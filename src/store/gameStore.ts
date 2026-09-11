@@ -7,6 +7,7 @@ import type {
   Transaction,
   StaffId,
   Warehouse,
+  InventoryLot,
 } from "../types";
 import { COMMODITIES } from "../engine/commodities";
 import { VEHICLES } from "../engine/vehicles";
@@ -19,12 +20,18 @@ import {
   delegationFee,
 } from "../engine/warehouses";
 import { STAFF, staffContractCost } from "../engine/staff";
-import { getDistance, CITY_COST_MULTIPLIER } from "../engine/cities";
+import {
+  getDistance,
+  CITY_COST_MULTIPLIER,
+  citySellsCommodity,
+} from "../engine/cities";
 import { calcTripExpenses, travelDays, degradeVehicle } from "../engine/travel";
 import { applyTradeImpact } from "../engine/market";
 import { createLoan, repayLoan } from "../engine/banking";
 import { createNewGame, advanceDay, calcNetWorth } from "../engine/game";
 import { buildScheduledEvents } from "../engine/schedule";
+import { spoilLots } from "../engine/perishable";
+import { addLots, consumeLots, splitLots } from "../engine/lots";
 import { DAY_MS } from "../engine/calendar";
 import { mulberry32, rngInt } from "../engine/rng";
 
@@ -33,6 +40,11 @@ interface GameStore extends GameState {
     newGame: (seed?: number) => void;
     buyCommodity: (commodityId: CommodityId, quantity: number) => void;
     sellCommodity: (commodityId: CommodityId, quantity: number) => void;
+    buyRemoteCommodity: (
+      commodityId: CommodityId,
+      quantity: number,
+      cityId: CityId
+    ) => void;
     travelTo: (cityId: CityId) => void;
     buyVehicle: (typeId: string) => void;
     selectVehicle: (vehicleId: string) => void;
@@ -63,6 +75,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     buyCommodity: (commodityId, quantity) => {
       const state = get();
       if (state.gameOver) return;
+      if (!citySellsCommodity(state.currentCity, commodityId)) return;
 
       const market = state.cityMarkets[state.currentCity];
       const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
@@ -87,6 +100,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newInventory = { ...state.inventory };
       newInventory[commodityId] = (newInventory[commodityId] ?? 0) + quantity;
 
+      const newLots = addLots(state.inventoryLots, commodityId, [
+        { qty: quantity, unitPrice: price },
+      ]);
+
       applyTradeImpact(market, commodityId, quantity, true);
 
       const newMarket = { ...market };
@@ -108,6 +125,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         playerCash: newCash,
         inventory: newInventory,
+        inventoryLots: newLots,
         cityMarkets: newCityMarkets,
         transactions: [...state.transactions, transaction],
         playerNetWorth: newNetWorth,
@@ -117,6 +135,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     sellCommodity: (commodityId, quantity) => {
       const state = get();
       if (state.gameOver) return;
+      if (!citySellsCommodity(state.currentCity, commodityId)) return;
 
       const owned = state.inventory[commodityId] ?? 0;
       if (quantity > owned) return;
@@ -130,6 +149,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newInventory = { ...state.inventory };
       newInventory[commodityId] = owned - quantity;
       if (newInventory[commodityId] <= 0) delete newInventory[commodityId];
+
+      const newLots = consumeLots(state.inventoryLots, commodityId, quantity);
 
       applyTradeImpact(market, commodityId, quantity, false);
 
@@ -152,6 +173,73 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         playerCash: newCash,
         inventory: newInventory,
+        inventoryLots: newLots,
+        cityMarkets: newCityMarkets,
+        transactions: [...state.transactions, transaction],
+        playerNetWorth: newNetWorth,
+      });
+    },
+
+    buyRemoteCommodity: (commodityId, quantity, cityId) => {
+      const state = get();
+      if (state.gameOver || cityId === state.currentCity) return;
+      if (!citySellsCommodity(cityId, commodityId)) return;
+
+      const wh = state.warehouses.find((w) => w.cityId === cityId);
+      if (!wh) return;
+
+      const market = state.cityMarkets[cityId];
+      const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
+      const subtotal = quantity * price;
+      const marketFee = Math.round(subtotal * 0.015);
+      const delegation = delegationFee(subtotal);
+      const totalCost = subtotal + marketFee + delegation;
+
+      if (totalCost > state.playerCash) return;
+
+      const used = warehouseUsedCapacity(wh.inventory);
+      if (used + quantity > wh.capacity) return;
+
+      const newWhInventory = { ...wh.inventory };
+      newWhInventory[commodityId] = (newWhInventory[commodityId] ?? 0) + quantity;
+
+      const newWhLots = addLots(wh.lots, commodityId, [
+        { qty: quantity, unitPrice: price },
+      ]);
+
+      const newWarehouses = state.warehouses.map((w) =>
+        w.id === wh.id
+          ? { ...w, inventory: newWhInventory, lots: newWhLots }
+          : w
+      );
+
+      applyTradeImpact(market, commodityId, quantity, true);
+
+      const newMarket = { ...market };
+      const newCityMarkets = { ...state.cityMarkets, [cityId]: newMarket };
+
+      const transaction: Transaction = {
+        day: state.currentDay,
+        type: "buy",
+        commodityId,
+        quantity,
+        unitPrice: price,
+        total: subtotal,
+        cityId,
+        remote: true,
+      };
+
+      const newCash = state.playerCash - totalCost;
+      const newNetWorth = calcNetWorth({
+        ...state,
+        playerCash: newCash,
+        warehouses: newWarehouses,
+        cityMarkets: newCityMarkets,
+      });
+
+      set({
+        playerCash: newCash,
+        warehouses: newWarehouses,
         cityMarkets: newCityMarkets,
         transactions: [...state.transactions, transaction],
         playerNetWorth: newNetWorth,
@@ -193,6 +281,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      const newLots = spoilLots(
+        state.inventoryLots,
+        days,
+        perishableProtection
+      );
+
       const newCash = state.playerCash - expenses.total;
 
       const ledger: LedgerLine[] = [
@@ -212,6 +306,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         currentCity: cityId,
         playerCash: newCash,
         inventory: newInventory,
+        inventoryLots: newLots,
         vehicles: newVehicles,
         todaysLedger: ledger,
         playerNetWorth: newNetWorth,
@@ -291,6 +386,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         typeId: typeId as any,
         cityId: targetCity,
         inventory: {} as Partial<Record<CommodityId, number>>,
+        lots: {} as Partial<Record<CommodityId, InventoryLot[]>>,
         level: 0,
         capacity: warehouseCapacity(def, 0),
       };
@@ -350,15 +446,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       newInventory[commodityId] = owned - quantity;
       if (newInventory[commodityId] <= 0) delete newInventory[commodityId];
 
+      const { moved, fromRest } = splitLots(
+        state.inventoryLots,
+        commodityId,
+        quantity
+      );
+
       const newWhInventory = { ...wh.inventory };
       newWhInventory[commodityId] = (newWhInventory[commodityId] ?? 0) + quantity;
 
+      const newWhLots = addLots(wh.lots, commodityId, moved);
+
       const newWarehouses = state.warehouses.map((w) =>
-        w.id === warehouseId ? { ...w, inventory: newWhInventory } : w
+        w.id === warehouseId
+          ? { ...w, inventory: newWhInventory, lots: newWhLots }
+          : w
       );
 
       set({
         inventory: newInventory,
+        inventoryLots: fromRest,
         warehouses: newWarehouses,
         playerCash: state.playerCash - remoteFee,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - remoteFee, inventory: newInventory }),
@@ -381,15 +488,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       newWhInventory[commodityId] = whOwned - quantity;
       if (newWhInventory[commodityId] <= 0) delete newWhInventory[commodityId];
 
+      const { moved, fromRest } = splitLots(
+        wh.lots,
+        commodityId,
+        quantity
+      );
+
       const newInventory = { ...state.inventory };
       newInventory[commodityId] = (newInventory[commodityId] ?? 0) + quantity;
 
+      const newLots = addLots(state.inventoryLots, commodityId, moved);
+
       const newWarehouses = state.warehouses.map((w) =>
-        w.id === warehouseId ? { ...w, inventory: newWhInventory } : w
+        w.id === warehouseId
+          ? { ...w, inventory: newWhInventory, lots: fromRest }
+          : w
       );
 
       set({
         inventory: newInventory,
+        inventoryLots: newLots,
         warehouses: newWarehouses,
         playerCash: state.playerCash - remoteFee,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - remoteFee, inventory: newInventory }),
@@ -466,8 +584,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     saveGame: () => {
       const state = get();
       const save = {
-        saveVersion: 2,
-        gameVersion: "2.4.0",
+        saveVersion: 3,
+        gameVersion: "2.5.0",
         createdAt: new Date().toISOString(),
         gameState: {
           seed: state.seed,
@@ -482,6 +600,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           selectedVehicleId: state.selectedVehicleId,
           warehouses: state.warehouses,
           inventory: state.inventory,
+          inventoryLots: state.inventoryLots,
           staffHires: state.staffHires,
           loans: state.loans,
           cityMarkets: state.cityMarkets,
@@ -512,9 +631,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             startDate,
             scheduledEvents,
             staffHires: gs.staffHires ?? {},
+            inventoryLots: gs.inventoryLots ?? {},
             warehouses: (gs.warehouses ?? []).map((w: any) => ({
               ...w,
               level: w.level ?? 0,
+              lots: w.lots ?? {},
               capacity:
                 w.capacity ??
                 WAREHOUSES[w.typeId as keyof typeof WAREHOUSES]?.baseCapacity ??

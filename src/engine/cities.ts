@@ -1,4 +1,5 @@
 import type { CityDef, CityId, RegionId, CommodityId } from "../types";
+import { COMMODITIES, ALL_COMMODITY_IDS } from "./commodities";
 
 const dist: Record<CityId, Partial<Record<CityId, number>>> = {
   bandung: {
@@ -132,110 +133,110 @@ export const CITY_REGION: Record<CityId, RegionId> = {
 export const CITIES: Record<CityId, CityDef> = {
   bandung: {
     id: "bandung", name: "Bandung", type: "agricultural", region: "java",
-    produces: ["coffee", "rice", "rubber"],
-    consumes: ["electronics", "steel", "medicine", "fuel"],
+    produces: ["coffee", "rice", "rubber", "orchid"],
+    consumes: ["electronics", "steel", "medicine", "fuel", "chili", "salt"],
     distance: dist.bandung,
   },
   jakarta: {
     id: "jakarta", name: "Jakarta", type: "commercial", region: "java",
-    produces: ["electronics", "clothing"],
-    consumes: ["rice", "coffee", "fish", "fuel", "construction"],
+    produces: ["electronics", "clothing", "paper", "glass"],
+    consumes: ["rice", "coffee", "fish", "fuel", "construction", "tea", "cocoa", "chili", "beef", "chicken", "eggs", "milk", "salt", "carparts", "paint"],
     distance: dist.jakarta,
   },
   surabaya: {
     id: "surabaya", name: "Surabaya", type: "industrial", region: "java",
-    produces: ["steel", "electronics", "construction"],
-    consumes: ["fuel", "rubber", "rice", "fish"],
+    produces: ["steel", "electronics", "construction", "fertilizer"],
+    consumes: ["fuel", "rubber", "rice", "fish", "chicken", "soybeans", "cement"],
     distance: dist.surabaya,
   },
   semarang: {
     id: "semarang", name: "Semarang", type: "commercial", region: "java",
-    produces: ["sugar", "clothing"],
-    consumes: ["steel", "fuel", "electronics"],
+    produces: ["sugar", "clothing", "lumpia"],
+    consumes: ["steel", "fuel", "electronics", "tea", "soybeans", "cement"],
     distance: dist.semarang,
   },
   yogyakarta: {
     id: "yogyakarta", name: "Yogyakarta", type: "tourist", region: "java",
-    produces: ["clothing", "batik"],
-    consumes: ["rice", "coffee", "electronics", "medicine", "fuel"],
+    produces: ["clothing", "batik", "ceramics"],
+    consumes: ["rice", "coffee", "electronics", "medicine", "fuel", "chili", "eggs", "timber"],
     distance: dist.yogyakarta,
   },
   malang: {
     id: "malang", name: "Malang", type: "agricultural", region: "java",
-    produces: ["rice", "coffee", "sugar", "fish"],
-    consumes: ["steel", "medicine", "fuel", "construction"],
+    produces: ["rice", "coffee", "sugar", "fish", "apples"],
+    consumes: ["steel", "medicine", "fuel", "construction", "chili"],
     distance: dist.malang,
   },
   medan: {
     id: "medan", name: "Medan", type: "mining", region: "sumatra",
-    produces: ["rubber", "fuel"],
-    consumes: ["rice", "electronics", "medicine", "clothing", "construction"],
+    produces: ["rubber", "fuel", "durian", "ulos"],
+    consumes: ["rice", "electronics", "medicine", "clothing", "construction", "apples", "eggs"],
     distance: dist.medan,
   },
   makassar: {
     id: "makassar", name: "Makassar", type: "mining", region: "sulawesi",
-    produces: ["fish", "rubber", "silk"],
-    consumes: ["rice", "coffee", "steel", "electronics", "fuel"],
+    produces: ["fish", "rubber", "silk", "cocoa"],
+    consumes: ["rice", "coffee", "steel", "electronics", "fuel", "chili", "eggs"],
     distance: dist.makassar,
   },
   padang: {
     id: "padang", name: "Padang", type: "agricultural", region: "sumatra",
-    produces: ["rice", "fish", "rendang"],
-    consumes: ["electronics", "medicine", "fuel", "construction"],
+    produces: ["rice", "fish", "rendang", "palm_oil"],
+    consumes: ["electronics", "medicine", "fuel", "construction", "chili"],
     distance: dist.padang,
   },
   palembang: {
     id: "palembang", name: "Palembang", type: "agricultural", region: "sumatra",
     produces: ["fish", "rubber", "pempek"],
-    consumes: ["rice", "electronics", "steel", "fuel"],
+    consumes: ["rice", "electronics", "steel", "fuel", "salt", "soybeans"],
     distance: dist.palembang,
   },
   banjarmasin: {
     id: "banjarmasin", name: "Banjarmasin", type: "commercial", region: "borneo",
-    produces: ["fish", "rubber", "sasirangan"],
-    consumes: ["rice", "electronics", "medicine", "fuel"],
+    produces: ["fish", "rubber", "sasirangan", "timber"],
+    consumes: ["rice", "electronics", "medicine", "fuel", "salt", "eggs"],
     distance: dist.banjarmasin,
   },
   balikpapan: {
     id: "balikpapan", name: "Balikpapan", type: "mining", region: "borneo",
-    produces: ["fuel"],
-    consumes: ["rice", "fish", "electronics", "construction"],
+    produces: ["fuel", "timber"],
+    consumes: ["rice", "fish", "electronics", "construction", "cement", "nails"],
     distance: dist.balikpapan,
   },
   pontianak: {
     id: "pontianak", name: "Pontianak", type: "commercial", region: "borneo",
-    produces: ["rubber", "rice"],
-    consumes: ["electronics", "medicine", "fuel", "steel"],
+    produces: ["rubber", "rice", "palm_oil"],
+    consumes: ["electronics", "medicine", "fuel", "steel", "salt"],
     distance: dist.pontianak,
   },
   denpasar: {
     id: "denpasar", name: "Denpasar", type: "tourist", region: "bali_ntt",
     produces: ["jewelry", "construction"],
-    consumes: ["rice", "coffee", "electronics", "medicine", "fuel"],
+    consumes: ["rice", "coffee", "electronics", "medicine", "fuel", "apples", "eggs", "salt", "timber"],
     distance: dist.denpasar,
   },
   mataram: {
     id: "mataram", name: "Mataram", type: "agricultural", region: "bali_ntt",
-    produces: ["rice", "sugar"],
-    consumes: ["electronics", "medicine", "fuel", "steel"],
+    produces: ["rice", "sugar", "pearls"],
+    consumes: ["electronics", "medicine", "fuel", "steel", "chili", "eggs"],
     distance: dist.mataram,
   },
   manado: {
     id: "manado", name: "Manado", type: "tourist", region: "sulawesi",
-    produces: ["fish", "rice"],
-    consumes: ["electronics", "medicine", "fuel", "construction"],
+    produces: ["fish", "rice", "banana"],
+    consumes: ["electronics", "medicine", "fuel", "construction", "eggs", "salt", "milk"],
     distance: dist.manado,
   },
   ambon: {
     id: "ambon", name: "Ambon", type: "tourist", region: "maluku_papua",
     produces: ["fish", "nutmeg"],
-    consumes: ["rice", "electronics", "medicine", "fuel"],
+    consumes: ["rice", "electronics", "medicine", "fuel", "salt", "eggs"],
     distance: dist.ambon,
   },
   jayapura: {
     id: "jayapura", name: "Jayapura", type: "mining", region: "maluku_papua",
     produces: ["rice", "rubber", "noken"],
-    consumes: ["electronics", "medicine", "fuel", "steel"],
+    consumes: ["electronics", "medicine", "fuel", "steel", "chili", "eggs"],
     distance: dist.jayapura,
   },
 };
@@ -252,43 +253,67 @@ export function isCrossRegion(from: CityId, to: CityId): boolean {
 }
 
 export const CITY_PRODUCE_MAP: Record<CityId, CommodityId[]> = {
-  bandung: ["coffee", "rice", "rubber"],
-  jakarta: ["electronics", "clothing"],
-  surabaya: ["steel", "electronics", "construction"],
-  semarang: ["sugar", "clothing"],
-  yogyakarta: ["clothing", "batik"],
-  malang: ["rice", "coffee", "sugar", "fish"],
-  medan: ["rubber", "fuel"],
-  makassar: ["fish", "rubber", "silk"],
-  padang: ["rice", "fish", "rendang"],
+  bandung: ["coffee", "rice", "rubber", "orchid"],
+  jakarta: ["electronics", "clothing", "paper", "glass"],
+  surabaya: ["steel", "electronics", "construction", "fertilizer"],
+  semarang: ["sugar", "clothing", "lumpia"],
+  yogyakarta: ["clothing", "batik", "ceramics"],
+  malang: ["rice", "coffee", "sugar", "fish", "apples"],
+  medan: ["rubber", "fuel", "durian", "ulos"],
+  makassar: ["fish", "rubber", "silk", "cocoa"],
+  padang: ["rice", "fish", "rendang", "palm_oil"],
   palembang: ["fish", "rubber", "pempek"],
-  banjarmasin: ["fish", "rubber", "sasirangan"],
-  balikpapan: ["fuel"],
-  pontianak: ["rubber", "rice"],
+  banjarmasin: ["fish", "rubber", "sasirangan", "timber"],
+  balikpapan: ["fuel", "timber"],
+  pontianak: ["rubber", "rice", "palm_oil"],
   denpasar: ["jewelry", "construction"],
-  mataram: ["rice", "sugar"],
-  manado: ["fish", "rice"],
+  mataram: ["rice", "sugar", "pearls"],
+  manado: ["fish", "rice", "banana"],
   ambon: ["fish", "nutmeg"],
   jayapura: ["rice", "rubber", "noken"],
 };
 
 export const CITY_CONSUME_MAP: Record<CityId, CommodityId[]> = {
-  bandung: ["electronics", "steel", "medicine", "fuel"],
-  jakarta: ["rice", "coffee", "fish", "fuel", "construction"],
-  surabaya: ["fuel", "rubber", "rice", "fish"],
-  semarang: ["steel", "fuel", "electronics"],
-  yogyakarta: ["rice", "coffee", "electronics", "medicine", "fuel"],
-  malang: ["steel", "medicine", "fuel", "construction"],
-  medan: ["rice", "electronics", "medicine", "clothing", "construction"],
-  makassar: ["rice", "coffee", "steel", "electronics", "fuel"],
-  padang: ["electronics", "medicine", "fuel", "construction"],
-  palembang: ["rice", "electronics", "steel", "fuel"],
-  banjarmasin: ["rice", "electronics", "medicine", "fuel"],
-  balikpapan: ["rice", "fish", "electronics", "construction"],
-  pontianak: ["electronics", "medicine", "fuel", "steel"],
-  denpasar: ["rice", "coffee", "electronics", "medicine", "fuel"],
-  mataram: ["electronics", "medicine", "fuel", "steel"],
-  manado: ["electronics", "medicine", "fuel", "construction"],
-  ambon: ["rice", "electronics", "medicine", "fuel"],
-  jayapura: ["electronics", "medicine", "fuel", "steel"],
+  bandung: ["electronics", "steel", "medicine", "fuel", "chili", "salt"],
+  jakarta: ["rice", "coffee", "fish", "fuel", "construction", "tea", "cocoa", "chili", "beef", "chicken", "eggs", "milk", "salt", "carparts", "paint"],
+  surabaya: ["fuel", "rubber", "rice", "fish", "chicken", "soybeans", "cement"],
+  semarang: ["steel", "fuel", "electronics", "tea", "soybeans", "cement"],
+  yogyakarta: ["rice", "coffee", "electronics", "medicine", "fuel", "chili", "eggs", "timber"],
+  malang: ["steel", "medicine", "fuel", "construction", "chili"],
+  medan: ["rice", "electronics", "medicine", "clothing", "construction", "apples", "eggs"],
+  makassar: ["rice", "coffee", "steel", "electronics", "fuel", "chili", "eggs"],
+  padang: ["electronics", "medicine", "fuel", "construction", "chili"],
+  palembang: ["rice", "electronics", "steel", "fuel", "salt", "soybeans"],
+  banjarmasin: ["rice", "electronics", "medicine", "fuel", "salt", "eggs"],
+  balikpapan: ["rice", "fish", "electronics", "construction", "cement", "nails"],
+  pontianak: ["electronics", "medicine", "fuel", "steel", "salt"],
+  denpasar: ["rice", "coffee", "electronics", "medicine", "fuel", "apples", "eggs", "salt", "timber"],
+  mataram: ["electronics", "medicine", "fuel", "steel", "chili", "eggs"],
+  manado: ["electronics", "medicine", "fuel", "construction", "eggs", "salt", "milk"],
+  ambon: ["rice", "electronics", "medicine", "fuel", "salt", "eggs"],
+  jayapura: ["electronics", "medicine", "fuel", "steel", "chili", "eggs"],
 };
+
+/**
+ * True when a good is sold in this city: staples sell everywhere, while
+ * signature goods only sell where they are produced (see the Almanac page).
+ */
+export function citySellsCommodity(cityId: CityId, cid: CommodityId): boolean {
+  const def = COMMODITIES[cid];
+  if (!def) return false;
+  if (def.availableEverywhere) return true;
+  return (CITY_PRODUCE_MAP[cityId] ?? []).includes(cid);
+}
+
+export function availableCommoditiesForCity(cityId: CityId): CommodityId[] {
+  return ALL_COMMODITY_IDS.filter((cid) => citySellsCommodity(cityId, cid));
+}
+
+export function citiesThatSellCommodity(cid: CommodityId): CityId[] {
+  const def = COMMODITIES[cid];
+  if (!def) return [];
+  if (def.availableEverywhere) return ALL_CITY_IDS;
+  return ALL_CITY_IDS.filter((cityId) =>
+    (CITY_PRODUCE_MAP[cityId] ?? []).includes(cid)
+  );
+}
