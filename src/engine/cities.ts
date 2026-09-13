@@ -133,7 +133,7 @@ export const CITY_REGION: Record<CityId, RegionId> = {
 export const CITIES: Record<CityId, CityDef> = {
   bandung: {
     id: "bandung", name: "Bandung", type: "agricultural", region: "java",
-    produces: ["coffee", "rice", "rubber", "orchid"],
+    produces: ["coffee", "rice", "rubber", "orchid", "apples"],
     consumes: ["electronics", "steel", "medicine", "fuel", "chili", "salt"],
     distance: dist.bandung,
   },
@@ -145,13 +145,13 @@ export const CITIES: Record<CityId, CityDef> = {
   },
   surabaya: {
     id: "surabaya", name: "Surabaya", type: "industrial", region: "java",
-    produces: ["steel", "electronics", "construction", "fertilizer"],
+    produces: ["steel", "electronics", "construction", "fertilizer", "lumpia"],
     consumes: ["fuel", "rubber", "rice", "fish", "chicken", "soybeans", "cement"],
     distance: dist.surabaya,
   },
   semarang: {
     id: "semarang", name: "Semarang", type: "commercial", region: "java",
-    produces: ["sugar", "clothing", "lumpia"],
+    produces: ["sugar", "clothing", "lumpia", "batik"],
     consumes: ["steel", "fuel", "electronics", "tea", "soybeans", "cement"],
     distance: dist.semarang,
   },
@@ -163,7 +163,7 @@ export const CITIES: Record<CityId, CityDef> = {
   },
   malang: {
     id: "malang", name: "Malang", type: "agricultural", region: "java",
-    produces: ["rice", "coffee", "sugar", "fish", "apples"],
+    produces: ["rice", "coffee", "sugar", "fish", "apples", "orchid"],
     consumes: ["steel", "medicine", "fuel", "construction", "chili"],
     distance: dist.malang,
   },
@@ -181,13 +181,13 @@ export const CITIES: Record<CityId, CityDef> = {
   },
   padang: {
     id: "padang", name: "Padang", type: "agricultural", region: "sumatra",
-    produces: ["rice", "fish", "rendang", "palm_oil"],
+    produces: ["rice", "fish", "rendang", "palm_oil", "ulos"],
     consumes: ["electronics", "medicine", "fuel", "construction", "chili"],
     distance: dist.padang,
   },
   palembang: {
     id: "palembang", name: "Palembang", type: "agricultural", region: "sumatra",
-    produces: ["fish", "rubber", "pempek"],
+    produces: ["fish", "rubber", "pempek", "durian"],
     consumes: ["rice", "electronics", "steel", "fuel", "salt", "soybeans"],
     distance: dist.palembang,
   },
@@ -205,7 +205,7 @@ export const CITIES: Record<CityId, CityDef> = {
   },
   pontianak: {
     id: "pontianak", name: "Pontianak", type: "commercial", region: "borneo",
-    produces: ["rubber", "rice", "palm_oil"],
+    produces: ["rubber", "rice", "palm_oil", "sasirangan", "banana"],
     consumes: ["electronics", "medicine", "fuel", "steel", "salt"],
     distance: dist.pontianak,
   },
@@ -217,19 +217,19 @@ export const CITIES: Record<CityId, CityDef> = {
   },
   mataram: {
     id: "mataram", name: "Mataram", type: "agricultural", region: "bali_ntt",
-    produces: ["rice", "sugar", "pearls"],
+    produces: ["rice", "sugar", "pearls", "jewelry"],
     consumes: ["electronics", "medicine", "fuel", "steel", "chili", "eggs"],
     distance: dist.mataram,
   },
   manado: {
     id: "manado", name: "Manado", type: "tourist", region: "sulawesi",
-    produces: ["fish", "rice", "banana"],
+    produces: ["fish", "rice", "banana", "silk"],
     consumes: ["electronics", "medicine", "fuel", "construction", "eggs", "salt", "milk"],
     distance: dist.manado,
   },
   ambon: {
     id: "ambon", name: "Ambon", type: "tourist", region: "maluku_papua",
-    produces: ["fish", "nutmeg"],
+    produces: ["fish", "nutmeg", "pearls"],
     consumes: ["rice", "electronics", "medicine", "fuel", "salt", "eggs"],
     distance: dist.ambon,
   },

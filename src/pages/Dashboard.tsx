@@ -6,7 +6,6 @@ import { Meter } from "../components/Meter";
 import { Sparkline } from "../components/Sparkline";
 import { formatFullRp, formatSignedRp } from "../utils/format";
 import { COMMODITIES } from "../engine/commodities";
-import { VEHICLES as VEHICLES_MAP } from "../engine/vehicles";
 import { formatDateForDay } from "../engine/calendar";
 import { activeScheduledForDay } from "../engine/schedule";
 import type { CommodityId } from "../types";
@@ -18,7 +17,6 @@ export function Dashboard() {
   const playerCash = useGameStore((s) => s.playerCash);
   const playerNetWorth = useGameStore((s) => s.playerNetWorth);
   const currentCity = useGameStore((s) => s.currentCity);
-  const inventory = useGameStore((s) => s.inventory);
   const warehouses = useGameStore((s) => s.warehouses);
   const vehicles = useGameStore((s) => s.vehicles);
   const loans = useGameStore((s) => s.loans);
@@ -35,16 +33,14 @@ export function Dashboard() {
 
   let inventoryValue = 0;
   const market = cityMarkets[currentCity];
-  for (const [cid, qty] of Object.entries(inventory) as [CommodityId, number][]) {
-    const price = market.prices[cid] ?? COMMODITIES[cid].basePrice;
-    inventoryValue += qty * price;
+  for (const v of vehicles) {
+    for (const [cid, qty] of Object.entries(v.inventory ?? {}) as [CommodityId, number][]) {
+      const price = market.prices[cid] ?? COMMODITIES[cid].basePrice;
+      inventoryValue += qty * price;
+    }
   }
 
   let assetValue = 0;
-  for (const v of vehicles) {
-    const def = VEHICLES_MAP[v.typeId];
-    assetValue += Math.round(def.price * (v.condition / 100));
-  }
   for (const _wh of warehouses) {
     assetValue += 10_000_000 * (1 + 0.25 * _wh.level);
   }

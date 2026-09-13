@@ -23,20 +23,23 @@ export function Market() {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
   const [quantity, setQuantity] = useState(100);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "price" | "trend">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const currentCity = useGameStore((s) => s.currentCity);
   const cityMarkets = useGameStore((s) => s.cityMarkets);
-  const inventory = useGameStore((s) => s.inventory);
   const playerCash = useGameStore((s) => s.playerCash);
   const selectedVehicleId = useGameStore((s) => s.selectedVehicleId);
   const vehicles = useGameStore((s) => s.vehicles);
+  const warehouses = useGameStore((s) => s.warehouses);
   const actions = useGameStore((s) => s.actions);
 
   const market = cityMarkets[currentCity];
   const cityName = CITIES[currentCity]?.name ?? currentCity;
 
-  const carriedUnits = Object.values(inventory).reduce((s, v) => s + v, 0);
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  const vehicleInventory = selectedVehicle?.inventory ?? {};
+  const carriedUnits = Object.values(vehicleInventory).reduce((s, v) => s + v, 0);
   const vehicleCapacity = selectedVehicle
     ? VEHICLES[selectedVehicle.typeId].capacity
     : Infinity;
@@ -64,25 +67,46 @@ export function Market() {
       demand,
       history,
       changePct,
-      playerOwns: inventory[cid] ?? 0,
+      playerOwns: vehicleInventory[cid] ?? 0,
       perishable: def.perishable,
     };
   });
 
   const query = search.trim().toLowerCase();
-  const visible = query
+  const filtered = query
     ? commodities.filter(
         (c) =>
           c.name.toLowerCase().includes(query) ||
           (COMMODITIES[c.commodityId].category as string).includes(query)
       )
     : commodities;
+  const visible = [...filtered].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    if (sortBy === "price") return (a.price - b.price) * dir;
+    if (sortBy === "trend") return (a.changePct - b.changePct) * dir;
+    return a.name.localeCompare(b.name) * dir;
+  });
 
   const selected = commodities.find((c) => c.commodityId === selectedId) ?? null;
 
-  const heldElsewhere = Object.entries(inventory).filter(
-    ([cid]) => !citySellsCommodity(currentCity, cid as CommodityId)
-  );
+  const heldElsewhere = (() => {
+    const totals = new Map<CommodityId, number>();
+    for (const v of vehicles) {
+      for (const [cid, qty] of Object.entries(v.inventory ?? {})) {
+        if (!citySellsCommodity(currentCity, cid as CommodityId)) {
+          totals.set(cid as CommodityId, (totals.get(cid as CommodityId) ?? 0) + qty);
+        }
+      }
+    }
+    for (const wh of warehouses) {
+      for (const [cid, qty] of Object.entries(wh.inventory)) {
+        if (!citySellsCommodity(currentCity, cid as CommodityId)) {
+          totals.set(cid as CommodityId, (totals.get(cid as CommodityId) ?? 0) + qty);
+        }
+      }
+    }
+    return Array.from(totals.entries());
+  })();
 
   return (
     <div className="space-y-6">
@@ -129,19 +153,37 @@ export function Market() {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <ReadoutPanel bodyClassName="p-0">
           <div className="border-b border-ink-700 px-5 py-3">
-            <div className="relative">
-              <Search
-                size={15}
-                strokeWidth={1.75}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mist-400"
-              />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search goods or category…"
-                className="w-full border border-ink-600 bg-ink-900 py-2 pl-9 pr-3 text-[13px] text-paper-100 placeholder:text-mist-400 focus:border-brass-400 focus:outline-none"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[170px] flex-1">
+                <Search
+                  size={15}
+                  strokeWidth={1.75}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-mist-400"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search goods or category…"
+                  className="w-full border border-ink-600 bg-ink-900 py-2 pl-9 pr-3 text-[13px] text-paper-100 placeholder:text-mist-400 focus:border-brass-400 focus:outline-none"
+                />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "name" | "price" | "trend")}
+                className="border border-ink-600 bg-ink-900 px-2 py-2 text-[13px] text-paper-200 focus:border-brass-400 focus:outline-none"
+              >
+                <option value="name">Sort: name</option>
+                <option value="price">Sort: price</option>
+                <option value="trend">Sort: trend</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+                className="border border-ink-600 bg-ink-900 px-2 py-2 text-[13px] text-mist-300 hover:border-brass-400 hover:text-brass-300"
+              >
+                {sortDir === "asc" ? "↑ Asc" : "↓ Desc"}
+              </button>
             </div>
           </div>
           <ul className="divide-y divide-ink-700">
@@ -160,7 +202,6 @@ export function Market() {
                     setQuantity(
                       c.playerOwns > 0 ? Math.min(c.playerOwns, 100) : 100
                     );
-                    setMode(c.playerOwns > 0 ? "sell" : "buy");
                   }}
                 />
               ))
@@ -371,7 +412,7 @@ function RemoteBuyPanel() {
           if (!ok) return;
           actions.buyRemoteCommodity(cid, qty, city);
         }}
-        className="mt-5 w-full bg-jade-500 py-2.5 text-[14px] font-medium text-ink-950 transition-colors hover:bg-jade-400 disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200"
+        className="mt-5 w-full bg-jade-500 py-2.5 text-[14px] font-medium text-paper-100 transition-colors hover:bg-jade-400 disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200"
       >
         Confirm purchase · {formatFullRp(total)}
       </button>
@@ -415,7 +456,7 @@ function CommodityRow({
       <button
         type="button"
         onClick={onSelect}
-        className={`grid w-full grid-cols-[1fr_auto] items-center gap-4 px-5 py-4 text-left transition-colors sm:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))_auto] ${
+        className={`grid w-full grid-cols-[1fr_auto_auto] items-center gap-x-4 gap-y-1 px-5 py-4 text-left transition-colors sm:grid-cols-[1.4fr_repeat(2,minmax(0,1fr))_repeat(2,auto)] ${
           selected ? "bg-ink-700/50" : "hover:bg-ink-800/60"
         }`}
       >
@@ -424,17 +465,28 @@ function CommodityRow({
             {commodity.name}
           </p>
           <p className="text-[12px] text-mist-400">
-            {formatFullRp(commodity.price)} / {commodity.unit}
-            {commodity.playerOwns > 0 && (
+            {commodity.playerOwns > 0 ? (
               <span className="text-brass-300">
-                {" "}
-                · you hold {commodity.playerOwns}
+                you hold {commodity.playerOwns}{" "}
+                {commodity.unit}
+                {commodity.playerOwns === 1 ? "" : "s"}
               </span>
+            ) : (
+              <span>not holding</span>
             )}
           </p>
         </div>
 
-        <div className="hidden sm:block">
+        <div className="sm:col-start-2 sm:col-span-1">
+          <p className="font-nums text-[14px] text-paper-100 text-right sm:text-left">
+            {formatFullRp(commodity.price)}
+          </p>
+          <p className="text-[11px] text-mist-500 text-right sm:text-left">
+            / {commodity.unit}
+          </p>
+        </div>
+
+        <div className="hidden sm:flex sm:items-center sm:justify-center">
           <DualMeter supply={commodity.supply} demand={commodity.demand} />
         </div>
 
@@ -505,7 +557,9 @@ function TradeTicket({
             onClick={() => setMode(m)}
             className={`flex-1 py-2 text-[13px] capitalize transition-colors ${
               mode === m
-                ? "bg-ink-900 text-paper-100"
+                ? m === "buy"
+                  ? "bg-jade-500/50 text-paper-100"
+                  : "bg-rust-500/50 text-paper-100"
                 : "text-mist-300 hover:bg-ink-900/5 hover:text-paper-200"
             }`}
           >
@@ -553,7 +607,7 @@ function TradeTicket({
         type="button"
         disabled={canAfford === false || overCapacity}
         onClick={() => onConfirm(quantity)}
-        className={`mt-5 w-full py-2.5 text-[14px] font-medium text-ink-950 transition-colors disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200 ${
+        className={`mt-5 w-full py-2.5 text-[14px] font-medium text-paper-100 transition-colors disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200 ${
           mode === "buy"
             ? "bg-jade-500 hover:bg-jade-400"
             : "bg-rust-500 hover:bg-rust-400"

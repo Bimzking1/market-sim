@@ -30,7 +30,7 @@ const ENTRIES: HelpEntry[] = [
   {
     question: "What is net worth?",
     answer:
-      "Net worth equals cash plus inventory (valued at current-city prices), plus goods stored in warehouses (valued at each warehouse's city), plus vehicle value (purchase price scaled by condition), minus outstanding debt. Objectives are measured against net worth.",
+      "Net worth equals cash plus all goods you carry (valued at current-city prices), plus goods stored in warehouses (valued at each warehouse's city), minus outstanding debt. Vehicles themselves are not counted — they are equipment, not assets. Objectives are measured against net worth.",
     tags: ["net worth", "wealth", "score"],
   },
   {
@@ -72,7 +72,7 @@ const ENTRIES: HelpEntry[] = [
   {
     question: "What are warehouses for?",
     answer:
-      "Warehouses store goods so they don't clog your vehicle, and they stop perishables from spoiling. You buy a warehouse by paying 30 days of rent upfront. You can then wait for prices to rise before selling. Owned warehouses also add asset value to your net worth. You can even buy, upgrade, store, and withdraw remotely — but a 6% delegation fee applies to any action handled from another city.",
+      "Warehouses store goods so they don't clog your vehicle, and they stop perishables from spoiling. You buy a warehouse by paying 30 days of rent upfront. You can then wait for prices to rise before selling. Stored goods count toward your net worth. You can even buy, upgrade, store, and withdraw remotely — but a 6% delegation fee applies to any action handled from another city.",
     tags: ["warehouse", "storage", "store", "capacity", "delegate", "remote"],
   },
   {
@@ -90,8 +90,14 @@ const ENTRIES: HelpEntry[] = [
   {
     question: "What does the Inventory page show?",
     answer:
-      "Inventory lists every good you own across your current vehicle and all owned warehouses. Each item breaks down into the purchase lots it came from — for example '25 sacks bought at Rp 12.000, 10 sacks bought at Rp 15.000' — plus the average price you paid per unit. Use it to see what each load cost you before you choose where to sell.",
+      "Inventory lists every good you own across all your vehicles and all owned warehouses, stop by stop. Each row expands into a table of purchase lots: how many you bought, at what price, in which city, and on which day — plus the average price you paid per unit. Use it to see what each load cost you before you choose where to sell.",
     tags: ["inventory", "lots", "cargo", "average", "purchase price", "stock"],
+  },
+  {
+    question: "Can I move cargo between vehicles and warehouses?",
+    answer:
+      "Yes. Every vehicle carries its own load, shown in the Garage with per-type quantity and where each lot was bought. On the same page use 'Transfer cargo' to move goods freely between any two of your vehicles, or between a vehicle and a warehouse in your current city. Transfers are free and instant.",
+    tags: ["cargo", "transfer", "move", "vehicle", "garage", "load"],
   },
   {
     question: "Why can't I buy or sell some goods in this city?",

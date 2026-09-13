@@ -46,6 +46,8 @@ export function createNewGame(seed?: number): GameState {
     condition: 100,
     fuel: 100,
     mileage: 0,
+    inventory: {},
+    lots: {},
   };
 
   const objectives: Objective[] = [
@@ -59,7 +61,7 @@ export function createNewGame(seed?: number): GameState {
     { id: "obj_8", label: "Finish with zero debt", target: "No debt", progress: 0, complete: false },
   ];
 
-  return {
+  const freshState: GameState = {
     seed: actualSeed,
     startDate,
     currentDay: 1,
@@ -71,8 +73,6 @@ export function createNewGame(seed?: number): GameState {
     vehicles: [startingVehicle],
     selectedVehicleId: "vehicle_start",
     warehouses: [],
-    inventory: {},
-    inventoryLots: {},
     staffHires: {},
     loans: [],
     cityMarkets,
@@ -84,14 +84,24 @@ export function createNewGame(seed?: number): GameState {
     gameStarted: true,
     gameOver: false,
   };
+
+  return {
+    ...freshState,
+    playerNetWorth: calcNetWorth(freshState),
+  };
 }
 
 export function calcNetWorth(state: GameState): number {
   let inventoryValue = 0;
-  for (const [cid, qty] of Object.entries(state.inventory) as [CommodityId, number][]) {
-    const market = state.cityMarkets[state.currentCity];
-    const price = market.prices[cid] ?? COMMODITIES[cid].basePrice;
-    inventoryValue += qty * price;
+  for (const v of state.vehicles) {
+    for (const [cid, qty] of Object.entries(v.inventory ?? {}) as [
+      CommodityId,
+      number
+    ][]) {
+      const market = state.cityMarkets[state.currentCity];
+      const price = market.prices[cid] ?? COMMODITIES[cid].basePrice;
+      inventoryValue += qty * price;
+    }
   }
 
   let warehouseValue = 0;
@@ -103,12 +113,6 @@ export function calcNetWorth(state: GameState): number {
     }
   }
 
-  let vehicleValue = 0;
-  for (const v of state.vehicles) {
-    const def = VEHICLES[v.typeId];
-    vehicleValue += Math.round(def.price * (v.condition / 100));
-  }
-
   let totalDebt = 0;
   for (const loan of state.loans) {
     if (loan.status !== "paid") {
@@ -116,7 +120,7 @@ export function calcNetWorth(state: GameState): number {
     }
   }
 
-  return state.playerCash + inventoryValue + warehouseValue + vehicleValue - totalDebt;
+  return state.playerCash + inventoryValue + warehouseValue - totalDebt;
 }
 
 export function advanceDay(state: GameState): GameState {
@@ -202,7 +206,6 @@ export function advanceDay(state: GameState): GameState {
 
   const netWorth = calcNetWorth({ ...state, playerCash: cash, loans: newLoans, currentDay: newDay });
 
-  const updatedInventory = { ...state.inventory };
   const updatedWarehouses = state.warehouses.map((wh) => ({
     ...wh,
     inventory: spoilGoods(wh.inventory, 1, 0),
@@ -229,7 +232,6 @@ export function advanceDay(state: GameState): GameState {
   creditRating,
   activeEvents: newEvents,
   loans: newLoans,
-  inventory: updatedInventory,
   warehouses: updatedWarehouses,
   staffHires: updatedStaffHires,
   todaysLedger: ledger,

@@ -22,10 +22,14 @@ import type { CityId, CommodityId, WarehouseTypeId } from "../types";
 
 export function WarehousePage() {
   const warehouses = useGameStore((s) => s.warehouses);
-  const inventory = useGameStore((s) => s.inventory);
+  const vehicles = useGameStore((s) => s.vehicles);
+  const selectedVehicleId = useGameStore((s) => s.selectedVehicleId);
   const currentCity = useGameStore((s) => s.currentCity);
   const playerCash = useGameStore((s) => s.playerCash);
   const actions = useGameStore((s) => s.actions);
+
+  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  const inventory = selectedVehicle?.inventory ?? {};
 
   const [buyCity, setBuyCity] = useState<CityId>(currentCity);
   const buyMult = CITY_COST_MULTIPLIER[buyCity] ?? 1;
@@ -43,7 +47,7 @@ export function WarehousePage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <ReadoutPanel title="Your inventory">
           <p className="mb-3 text-[13px] text-mist-400">
-            Goods you are carrying
+            Goods carried on {selectedVehicle?.name ?? "your vehicle"}
           </p>
           {Object.keys(inventory).length === 0 ? (
             <p className="text-[14px] text-mist-400">Your inventory is empty.</p>

@@ -2,6 +2,34 @@
 
 All notable changes to Kongsi — Trading Economy Game.
 
+## [2.7.0] — 2026-09-11
+
+### Changed
+
+- **Market buy/sell tabs** — Switching goods no longer resets the active tab to Buy; the active tab is now tinted (green for Buy, red for Sell, at 50% opacity) and the Confirm buttons use white text on the jade/rust background
+- **Market sorting** — Goods can be sorted by name, price, or trend, ascending or descending, from a control right in the search bar; rows were reorganized so price is its own column (before the supply/demand meter) and each good shows how much you currently hold
+- **Inventory row click** — Clicking anywhere on a commodity row now expands its lot detail table, not just the small Show button
+- **Signature goods spread** — Regional specialties are no longer locked to a single city: Batik (Yogyakarta & Semarang), Ulos (Medan & Padang), Sasirangan (Banjarmasin & Pontianak), Silk (Makassar & Manado), Orchid (Bandung & Malang), Lumpia (Semarang & Surabaya), Apples (Malang & Bandung), Durian (Medan & Palembang), Jewelry (Denpasar & Mataram), Pearls (Mataram & Ambon), and Bananas (Manado & Pontianak). Rendang, Pempek, Noken, and Nutmeg remain single-city icons
+- **Garage lot lines** — Cargo details no longer wrap mid-city-name; each lot now shows quantity/price and city · date as a clean two-part row
+
+## [2.6.0] — 2026-09-11
+
+### Fixed
+
+- **Net worth** — Vehicles are no longer counted toward net worth (their resale value was inflating the total once you made any purchase — starting cash Rp 10M jumped to "Rp 95M" because the truck's Rp 85M was added). Net worth is now exactly cash + the goods you carry + goods stored in warehouses − debt, and it starts consistent
+
+### Added
+
+- **Per-vehicle cargo** — Every vehicle now carries its own goods. Buying, selling, travelling, storing, and withdrawing all follow the vehicle you have selected. Vehicles parked in the garage keep their own loads
+- **Garage cargo & transfers** — The Garage shows each vehicle's cargo, quantity, and per-lot price/city/date, with a full capacity bar. A new "Transfer cargo" panel moves goods freely between any two vehicles, or between a vehicle and a warehouse in your current city, instantly and free
+- **Inventory detail table** — Each good row expands into a per-lot table showing how much you bought, at what unit price, in which city, and on which day, plus where the lot sits now. Average cost per unit and totals sit in the footer
+- **Bank lender cards** — The Bank now presents the two lenders as proper offer cards (bank: 0.1%/day best rate; moneylender: 0.3%/day, no limit checks) showing daily interest, 30-day interest, and the repayment date at a glance
+- **Compact Almanac** — The commodity reference is now a dense card grid you can filter with city and category dropdowns (plus search), showing each good's emoji, category, and where it sells
+
+### Changed
+
+- **Save format v4** — Cargo now lives on each vehicle; older v3 (and v2) saves are migrated automatically on load
+
 ## [2.5.0] — 2026-09-11
 
 ### Added
