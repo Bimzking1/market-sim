@@ -2,6 +2,74 @@
 
 All notable changes to Kongsi — Trading Economy Game.
 
+## [2.11.0] — 2026-09-13
+
+### Added
+
+- **"Owned" sort on the Market** — sort goods by what you're holding; everything you own in the current city (vehicle cargo plus local warehouses) floats to the top, and flipping the order shows goods you don't hold first
+
+### Changed
+
+- **Market trades are local** — the sell dropdown on the Market page now only lists vehicles and warehouses in the current city, matching how the buy dropdown already worked; warehouse stocks in other cities are still sellable through those warehouses' own cards on the Warehouse page (with the usual 6% delegation fee)
+- **Save format v8** — the game version is recorded as 2.11.0
+
+## [2.10.0] — 2026-09-13
+
+### Added
+
+- **Sell vehicles & warehouses** — vehicles resell for 50% of the showroom price, scaled by condition and mileage wear (older, beaten-up trucks are worth far less); warehouses return 50% of the purchase price plus every upgrade you paid for. You always keep one vehicle, and you must empty a vehicle's cargo or a warehouse's goods before selling
+- **Market (Remote) warehouse choice** — pick which warehouse in the scouted city the agent stores purchases into, with that warehouse's free capacity shown and enforced on the Buy button
+- **Collapsible Garage & Warehouse sections** — Owned vehicles, Transfer cargo, Buy a vehicle, Warehouses, Store goods, and Buy a warehouse can each be collapsed and expand again (open by default)
+- **Withdraw-all confirmation** — pulling every unit out of a warehouse asks first and shows the 6% delegation fee when the warehouse is remote
+
+### Changed
+
+- **Bounded market prices** — supply and demand now drift back toward 100 and stay inside a hard band, each day's price can move at most ±35%, and the final price is capped relative to the base price; runaway jumps like salt Rp 900 → Rp 1.5M are gone. Only special events (droughts, festivals, factory fires…) can push prices to the extremes
+- **Living objective bars** — buying or selling a vehicle or warehouse, or taking/repaying a loan, updates the Dashboard objectives immediately instead of waiting for the next day
+- **Softer component borders** — dropdowns, search boxes, and inputs now draw a proper soft border in both light and dark themes
+- **Save format v7** — the game version is recorded as 2.10.0
+
+## [2.9.0] — 2026-09-13
+
+### Added
+
+- **Market sorting by supply & demand** — the sort control now offers Supply and Demand beside Name, Price, and Trend
+- **Market (Remote) confirmation** — switching to a new city now asks first, showing the Rp 50.000 informant fee and the cash you'll have left
+- **History date filters** — filter trades by month picker or by a custom from/to date range, with a one-click Reset
+- **Save format v6** — game version is recorded as 2.9.0
+
+### Changed
+
+- **Supply/Demand labels** — the market meters now read "Supply" and "Demand" on desktop (S and D on small screens)
+
+### Fixed
+
+- **Sell confirm disabled** — selling from any vehicle or warehouse is possible again; the confirm button was always greyed out because capacity overflow checked buy-only logic against the sell flow
+- **Quantity fields no longer stick at 1** — you can clear and retype the Market and Remote Market quantities freely; values are clamped on blur instead of on every keystroke
+- **Garage bars aligned** — condition and cargo bars now sit on the same row with their values beneath
+
+## [2.8.0] — 2026-09-13
+
+### Added
+
+- **Trade History page** — `/history` lists every trade (date, item, quantity, price, market fee, city) with buy/sell filters, a search box, and summary cards; a delegate badge marks any trade an agent handled for you
+- **Market destinations** — buying now chooses where goods land (a vehicle or a warehouse in the current city); selling can come from any vehicle or any warehouse, with remote warehouses clearly marked "remote · 6%"
+- **Market (Remote) sidebar page** — the old "Buy from other cities" panel moved to its own page with a searchable city dropdown; revealing each city's prices costs Rp 50.000 (informant fee), and remote buying is only possible into a warehouse you own there
+- **Warehouse selling** — goods can be sold straight from a warehouse, partially or fully, at that warehouse city's market price (remote warehouses add the 6% delegation fee)
+- **Inventory grouping** — the Inventory page groups by city by default, or flat across all cities, or restricted to custom-selected cities
+
+### Changed
+
+- **Scroll to top** — every page navigation scrolls the page back to the top
+- **Transfer cargo makeover** — the Garage transfer panel uses the new custom dropdowns with search, labels like "Warehouse #1 · Bandung · Small · Lv 0", live used/total capacity, and a Transfer button that turns jade when valid and rust when the quantity overflows; the Market "you hold" total now counts your vehicle plus every warehouse in the current city
+- **Warehouse page redesign** — the vehicle inventory list is gone (it lives in the Garage); warehouses render as full-width cards with a city filter (current city by default), search, goods show/hide, pagination, and per-row sell/withdraw
+- **Map sort & search** — destination cities are sorted A–Z with a search box
+- **Save format v5** — the selected vehicle is remembered and sanitized on load; the game version is recorded
+
+### Fixed
+
+- **Capacity readout** — the Market no longer shows a stray "∞" when no vehicle is selected; capacity is always a real number
+
 ## [2.7.0] — 2026-09-11
 
 ### Changed

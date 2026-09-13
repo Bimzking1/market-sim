@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Search, Building2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { PaperPanel, ReadoutPanel } from "../components/Panel";
 import { Sparkline } from "../components/Sparkline";
 import { DualMeter } from "../components/Meter";
 import { Delta } from "../components/Badge";
+import { Dropdown, type DropdownOption } from "../components/Dropdown";
 import { confirmAction } from "../components/ConfirmDialog";
 import { COMMODITIES } from "../engine/commodities";
 import {
@@ -13,17 +14,30 @@ import {
   citySellsCommodity,
   CITIES,
 } from "../engine/cities";
-import { warehouseUsedCapacity, delegationFee } from "../engine/warehouses";
+import { delegationFee, warehouseSlotParts } from "../engine/warehouses";
 import { VEHICLES } from "../engine/vehicles";
 import { formatFullRp } from "../utils/format";
-import type { CommodityId, CommodityMarket, CityId } from "../types";
+import type { CommodityId, CommodityMarket } from "../types";
+
+type ContainerKey = string;
+
+function keyOf(type: "vehicle" | "warehouse", id: string): ContainerKey {
+  return `${type}:${id}`;
+}
+
+function parseKey(k: ContainerKey): { type: "vehicle" | "warehouse"; id: string } {
+  const i = k.indexOf(":");
+  return { type: k.slice(0, i) as "vehicle" | "warehouse", id: k.slice(i + 1) };
+}
 
 export function Market() {
   const [selectedId, setSelectedId] = useState<CommodityId | null>("coffee");
   const [mode, setMode] = useState<"buy" | "sell">("buy");
-  const [quantity, setQuantity] = useState(100);
+  const [quantity, setQuantity] = useState("100");
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "price" | "trend">("name");
+  const [sortBy, setSortBy] = useState<
+    "name" | "price" | "trend" | "supply" | "demand" | "owned"
+  >("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const currentCity = useGameStore((s) => s.currentCity);
@@ -38,16 +52,96 @@ export function Market() {
   const cityName = CITIES[currentCity]?.name ?? currentCity;
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
-  const vehicleInventory = selectedVehicle?.inventory ?? {};
-  const carriedUnits = Object.values(vehicleInventory).reduce((s, v) => s + v, 0);
-  const vehicleCapacity = selectedVehicle
-    ? VEHICLES[selectedVehicle.typeId].capacity
-    : Infinity;
+
+  const [destKey, setDestKey] = useState<ContainerKey>(() => {
+    const id = selectedVehicleId ?? vehicles[0]?.id ?? "";
+    return id ? keyOf("vehicle", id) : "";
+  });
+
+  const buyOptions: DropdownOption[] = useMemo(
+    () => [
+      ...vehicles.map((v) => {
+        const def = VEHICLES[v.typeId];
+        const used = Object.values(v.inventory ?? {}).reduce((s, x) => s + x, 0);
+        return {
+          value: keyOf("vehicle", v.id),
+          label: v.name,
+          sublabel: def.name,
+          meta: `${used} / ${def.capacity} units`,
+          group: "Vehicles",
+        };
+      }),
+      ...warehouses
+        .filter((w) => w.cityId === currentCity)
+        .map((w) => {
+          const parts = warehouseSlotParts(w, warehouses.findIndex((x) => x.id === w.id) + 1);
+          return {
+            value: keyOf("warehouse", w.id),
+            label: parts.label,
+            sublabel: parts.sublabel,
+            meta: `${parts.used} / ${w.capacity} units`,
+            group: "Warehouses (this city)",
+          };
+        }),
+    ],
+    [vehicles, warehouses, currentCity]
+  );
+
+  const sellOptions: DropdownOption[] = useMemo(
+    () => [
+      ...vehicles.map((v) => {
+        const def = VEHICLES[v.typeId];
+        const used = Object.values(v.inventory ?? {}).reduce((s, x) => s + x, 0);
+        return {
+          value: keyOf("vehicle", v.id),
+          label: v.name,
+          sublabel: def.name,
+          meta: `${used} / ${def.capacity} units`,
+          group: "Vehicles",
+        };
+      }),
+      ...warehouses
+        .filter((w) => w.cityId === currentCity)
+        .map((w) => {
+          const parts = warehouseSlotParts(w, warehouses.findIndex((x) => x.id === w.id) + 1);
+          return {
+            value: keyOf("warehouse", w.id),
+            label: parts.label,
+            sublabel: parts.sublabel,
+            meta: `${parts.used} / ${w.capacity} units`,
+            group: "Warehouses (this city)",
+          };
+        }),
+    ],
+    [vehicles, warehouses, currentCity]
+  );
+
+  const destOptions = mode === "buy" ? buyOptions : sellOptions;
+
+  useEffect(() => {
+    const stillValid = destOptions.some((o) => o.value === destKey);
+    if (!stillValid) {
+      const fallback =
+        vehicles.find((v) => v.id === selectedVehicleId) ?? vehicles[0];
+      setDestKey(fallback ? keyOf("vehicle", fallback.id) : "");
+    }
+  }, [destOptions, destKey, vehicles, selectedVehicleId]);
 
   const available = useMemo(
     () => availableCommoditiesForCity(currentCity),
     [currentCity]
   );
+
+  const currentCityWhInventory = useMemo(() => {
+    const total = new Map<CommodityId, number>();
+    for (const wh of warehouses) {
+      if (wh.cityId !== currentCity) continue;
+      for (const [cid, qty] of Object.entries(wh.inventory) as [CommodityId, number][]) {
+        total.set(cid, (total.get(cid) ?? 0) + qty);
+      }
+    }
+    return total;
+  }, [warehouses, currentCity]);
 
   const commodities: CommodityMarket[] = available.map((cid) => {
     const def = COMMODITIES[cid];
@@ -58,6 +152,9 @@ export function Market() {
     const prev = history.length >= 2 ? history[history.length - 2] : price;
     const changePct = prev > 0 ? (price - prev) / prev : 0;
 
+    const playerOwns =
+      (selectedVehicle?.inventory?.[cid] ?? 0) + (currentCityWhInventory.get(cid) ?? 0);
+
     return {
       commodityId: cid,
       name: `${def.emoji} ${def.name}`,
@@ -67,7 +164,7 @@ export function Market() {
       demand,
       history,
       changePct,
-      playerOwns: vehicleInventory[cid] ?? 0,
+      playerOwns,
       perishable: def.perishable,
     };
   });
@@ -84,6 +181,14 @@ export function Market() {
     const dir = sortDir === "asc" ? 1 : -1;
     if (sortBy === "price") return (a.price - b.price) * dir;
     if (sortBy === "trend") return (a.changePct - b.changePct) * dir;
+    if (sortBy === "supply") return (a.supply - b.supply) * dir;
+    if (sortBy === "demand") return (a.demand - b.demand) * dir;
+    if (sortBy === "owned") {
+      const aOwned = a.playerOwns > 0 ? 1 : 0;
+      const bOwned = b.playerOwns > 0 ? 1 : 0;
+      if (aOwned !== bOwned) return (bOwned - aOwned) * dir;
+      return a.name.localeCompare(b.name) * dir;
+    }
     return a.name.localeCompare(b.name) * dir;
   });
 
@@ -108,6 +213,47 @@ export function Market() {
     return Array.from(totals.entries());
   })();
 
+  const dest = parseKey(destKey || "vehicle:");
+  const destWh =
+    dest.type === "warehouse" ? warehouses.find((w) => w.id === dest.id) : undefined;
+  const sellRemote = mode === "sell" && !!destWh && destWh.cityId !== currentCity;
+  const destCapacity = (() => {
+    if (dest.type === "vehicle") {
+      const v = vehicles.find((x) => x.id === dest.id);
+      if (!v) return { used: 0, capacity: 0 };
+      const def = VEHICLES[v.typeId];
+      return {
+        used: Object.values(v.inventory ?? {}).reduce((s, x) => s + x, 0),
+        capacity: def.capacity,
+      };
+    }
+    if (destWh) {
+      return {
+        used: Object.values(destWh.inventory).reduce((s, x) => s + x, 0),
+        capacity: destWh.capacity,
+      };
+    }
+    return { used: 0, capacity: 0 };
+  })();
+  const sourceOwned = (() => {
+    if (!selected) return 0;
+    if (dest.type === "vehicle") {
+      return vehicles.find((x) => x.id === dest.id)?.inventory?.[selected.commodityId] ?? 0;
+    }
+    return destWh?.inventory[selected.commodityId] ?? 0;
+  })();
+
+  const effectivePrice = (() => {
+    if (!selected) return 0;
+    if (sellRemote && destWh) {
+      return (
+        cityMarkets[destWh.cityId].prices[selected.commodityId] ??
+        COMMODITIES[selected.commodityId].basePrice
+      );
+    }
+    return market.prices[selected.commodityId] ?? COMMODITIES[selected.commodityId].basePrice;
+  })();
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -120,10 +266,10 @@ export function Market() {
           </h1>
         </div>
         <Link
-          to="/map"
+          to="/market-remote"
           className="border border-ink-600 px-3 py-2 text-[13px] text-mist-300 hover:border-brass-400 hover:text-brass-300"
         >
-          Compare other cities
+          Scout other cities →
         </Link>
       </header>
 
@@ -131,8 +277,8 @@ export function Market() {
         <ReadoutPanel title="Held goods not traded here">
           <p className="mb-2 text-[13px] text-mist-400">
             These goods aren't sold in {cityName}, so you can't offload them
-            here. Visit the market that trades them (check the Almanac) or buy
-            through a warehouse agent.
+            here. Visit the market that trades them (check the Almanac) or work
+            through a warehouse agent in another city.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {heldElsewhere.map(([cid, qty]) => {
@@ -150,7 +296,7 @@ export function Market() {
         </ReadoutPanel>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <ReadoutPanel bodyClassName="p-0">
           <div className="border-b border-ink-700 px-5 py-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -168,15 +314,22 @@ export function Market() {
                   className="w-full border border-ink-600 bg-ink-900 py-2 pl-9 pr-3 text-[13px] text-paper-100 placeholder:text-mist-400 focus:border-brass-400 focus:outline-none"
                 />
               </div>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "name" | "price" | "trend")}
-                className="border border-ink-600 bg-ink-900 px-2 py-2 text-[13px] text-paper-200 focus:border-brass-400 focus:outline-none"
-              >
-                <option value="name">Sort: name</option>
-                <option value="price">Sort: price</option>
-                <option value="trend">Sort: trend</option>
-              </select>
+              <div className="w-[130px]">
+                <Dropdown
+                  value={sortBy}
+                  onChange={(v) =>
+                    setSortBy(v as "name" | "price" | "trend" | "supply" | "demand" | "owned")
+                  }
+                  options={[
+                    { value: "name", label: "Name" },
+                    { value: "price", label: "Price" },
+                    { value: "trend", label: "Trend" },
+                    { value: "supply", label: "Supply" },
+                    { value: "demand", label: "Demand" },
+                    { value: "owned", label: "Owned" },
+                  ]}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
@@ -200,7 +353,7 @@ export function Market() {
                   onSelect={() => {
                     setSelectedId(c.commodityId);
                     setQuantity(
-                      c.playerOwns > 0 ? Math.min(c.playerOwns, 100) : 100
+                      String(c.playerOwns > 0 ? Math.min(c.playerOwns, 100) : 100)
                     );
                   }}
                 />
@@ -218,17 +371,21 @@ export function Market() {
               quantity={quantity}
               setQuantity={setQuantity}
               playerCash={playerCash}
-              carriedUnits={carriedUnits}
-              vehicleCapacity={vehicleCapacity}
+              destKey={destKey}
+              setDestKey={setDestKey}
+              destOptions={destOptions}
+              destLabel={destOptions.find((o) => o.value === destKey)?.label}
+              destCapacity={destCapacity}
+              sourceOwned={sourceOwned}
+              effectivePrice={effectivePrice}
+              sellRemote={sellRemote}
               onConfirm={async (q) => {
-                const unitPrice =
-                  market.prices[selected.commodityId] ??
-                  COMMODITIES[selected.commodityId].basePrice;
-                const subtotal = q * unitPrice;
-                const fee = Math.round(subtotal * 0.015);
+                const unitPrice = effectivePrice;
                 const def = COMMODITIES[selected.commodityId];
+                const subtotal = q * unitPrice;
 
                 if (mode === "buy") {
+                  const fee = Math.round(subtotal * 0.015);
                   const ok = await confirmAction({
                     title: `Buy ${q} ${selected.unit}s of ${def.name}?`,
                     description: `${def.emoji} ${def.name} in ${cityName} at ${formatFullRp(unitPrice)} each`,
@@ -242,22 +399,33 @@ export function Market() {
                     tone: "good",
                   });
                   if (!ok) return;
-                  actions.buyCommodity(selected.commodityId, q);
+                  actions.buyCommodity(selected.commodityId, q, parseKey(destKey || keyOf("vehicle", vehicles[0]?.id ?? "")));
                 } else {
+                  const marketFee = Math.round(subtotal * 0.015);
+                  const delegation = sellRemote ? delegationFee(subtotal) : 0;
+                  const totalFee = marketFee + delegation;
+                  const lines: { label: string; value: string }[] = [
+                    { label: "Subtotal", value: formatFullRp(subtotal) },
+                    { label: "Market fee (1.5%)", value: `-${formatFullRp(marketFee)}` },
+                  ];
+                  if (delegation > 0) {
+                    lines.push({ label: "Delegation fee (6%)", value: `-${formatFullRp(delegation)}` });
+                  }
                   const ok = await confirmAction({
                     title: `Sell ${q} ${selected.unit}s of ${def.name}?`,
-                    description: `${def.emoji} ${def.name} in ${cityName} at ${formatFullRp(unitPrice)} each`,
-                    lines: [
-                      { label: "Subtotal", value: formatFullRp(subtotal) },
-                      { label: "Market fee (1.5%)", value: `-${formatFullRp(fee)}` },
-                    ],
+                    description: `${def.emoji} Sold in ${sellRemote && destWh ? CITIES[destWh.cityId].name : cityName} at ${formatFullRp(unitPrice)} each`,
+                    lines,
                     currentCash: playerCash,
-                    cashChange: subtotal - fee,
+                    cashChange: subtotal - totalFee,
                     confirmLabel: "Confirm sale",
                     tone: "danger",
                   });
                   if (!ok) return;
-                  actions.sellCommodity(selected.commodityId, q);
+                  actions.sellCommodity(
+                    selected.commodityId,
+                    q,
+                    parseKey(destKey || keyOf("vehicle", vehicles[0]?.id ?? ""))
+                  );
                 }
               }}
             />
@@ -270,174 +438,6 @@ export function Market() {
           )}
         </div>
       </div>
-
-      <RemoteBuyPanel />
-    </div>
-  );
-}
-
-function RemoteBuyPanel() {
-  const warehouses = useGameStore((s) => s.warehouses);
-  const currentCity = useGameStore((s) => s.currentCity);
-  const playerCash = useGameStore((s) => s.playerCash);
-  const cityMarkets = useGameStore((s) => s.cityMarkets);
-  const actions = useGameStore((s) => s.actions);
-
-  const remoteWhs = warehouses.filter((w) => w.cityId !== currentCity);
-  const [city, setCity] = useState<CityId | "">("");
-  const [cid, setCid] = useState<CommodityId>("rice");
-  const [qty, setQty] = useState(100);
-
-  const cityKeys = remoteWhs.map((w) => w.cityId).join(",");
-
-  useEffect(() => {
-    if (city && remoteWhs.some((w) => w.cityId === city)) return;
-    if (remoteWhs.length > 0) setCity(remoteWhs[0].cityId);
-  }, [cityKeys, city, remoteWhs.length]);
-
-  useEffect(() => {
-    if (!city) return;
-    const avail = availableCommoditiesForCity(city);
-    if (!avail.includes(cid)) setCid(avail[0] ?? "rice");
-  }, [city, cid]);
-
-  if (remoteWhs.length === 0) return null;
-
-  const wh = warehouses.find((w) => w.cityId === city);
-  if (!wh || !city) return null;
-
-  const avail = availableCommoditiesForCity(city);
-  const market = cityMarkets[city];
-  const def = COMMODITIES[cid];
-  const price = market.prices[cid] ?? def.basePrice;
-  const subtotal = qty * price;
-  const marketFee = Math.round(subtotal * 0.015);
-  const agents = delegationFee(subtotal);
-  const total = subtotal + marketFee + agents;
-  const used = warehouseUsedCapacity(wh.inventory);
-  const overCapacity = used + qty > wh.capacity;
-  const canAfford = total <= playerCash;
-
-  return (
-    <ReadoutPanel
-      eyebrow="Warehouse agents"
-      title="Buy from other cities"
-      action={
-        <div className="flex items-center gap-2 text-[13px] text-mist-300">
-          <Building2 size={16} strokeWidth={1.75} className="text-brass-300" />
-          <span>You own {warehouses.length} warehouse{warehouses.length === 1 ? "" : "s"}</span>
-        </div>
-      }
-    >
-      <p className="mb-4 text-[13px] text-mist-400">
-        You can only buy in cities where you own a warehouse. The agent charges
-        a 6% delegation fee on top of the 1.5% market fee, and the goods are
-        stored straight into that warehouse.
-      </p>
-
-      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_120px]">
-        <label className="block">
-          <span className="mb-1 block text-[13px] text-mist-300">Warehouse city</span>
-          <select
-            value={city}
-            onChange={(e) => setCity(e.target.value as CityId)}
-            className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[13px] text-paper-100 focus:border-brass-400 focus:outline-none"
-          >
-            {remoteWhs.map((w) => (
-              <option key={w.id} value={w.cityId}>
-                {CITIES[w.cityId]?.name ?? w.cityId}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-[13px] text-mist-300">Goods</span>
-          <select
-            value={cid}
-            onChange={(e) => setCid(e.target.value as CommodityId)}
-            className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[13px] text-paper-100 focus:border-brass-400 focus:outline-none"
-          >
-            {avail.map((a) => (
-              <option key={a} value={a}>
-                {COMMODITIES[a].emoji} {COMMODITIES[a].name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-[13px] text-mist-300">Quantity</span>
-          <input
-            type="number"
-            min={1}
-            value={qty}
-            onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 0))}
-            className="w-full border border-ink-600 bg-ink-900 px-3 py-2 font-nums text-[13px] text-paper-100 focus:border-brass-400 focus:outline-none"
-          />
-        </label>
-      </div>
-
-      <dl className="space-y-2 border-t border-ink-700 pt-3 text-[13px]">
-        <RemoteLine label="Subtotal" value={subtotal} />
-        <RemoteLine label="Market fee (1.5%)" value={-marketFee} />
-        <RemoteLine label="Agent fee (6%)" value={-agents} />
-        <div className="flex items-center justify-between pt-1">
-          <dt className="text-mist-400">
-            Warehouse space {used} / {wh.capacity}
-          </dt>
-          <dd className={`font-nums ${overCapacity ? "text-rust-400" : "text-mist-300"}`}>
-            {overCapacity ? "overflow" : "fits"}
-          </dd>
-        </div>
-      </dl>
-
-      <button
-        type="button"
-        disabled={!canAfford || overCapacity}
-        onClick={async () => {
-          const ok = await confirmAction({
-            title: `Buy ${qty} ${def.unit}s of ${def.name} in ${CITIES[city]?.name ?? city}?`,
-            description: `${def.emoji} The agent picks up ${def.name} in ${CITIES[city]?.name ?? city} and stores it in your warehouse there.`,
-            lines: [
-              { label: "Subtotal", value: formatFullRp(subtotal) },
-              { label: "Market fee (1.5%)", value: `-${formatFullRp(marketFee)}` },
-              { label: "Agent fee (6%)", value: `-${formatFullRp(agents)}` },
-            ],
-            currentCash: playerCash,
-            cashChange: -total,
-            confirmLabel: "Confirm purchase",
-            tone: "good",
-          });
-          if (!ok) return;
-          actions.buyRemoteCommodity(cid, qty, city);
-        }}
-        className="mt-5 w-full bg-jade-500 py-2.5 text-[14px] font-medium text-paper-100 transition-colors hover:bg-jade-400 disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200"
-      >
-        Confirm purchase · {formatFullRp(total)}
-      </button>
-      {overCapacity && (
-        <p className="mt-2 text-center text-[11px] text-rust-400">
-          Warehouse capacity exceeded
-        </p>
-      )}
-      {!overCapacity && !canAfford && (
-        <p className="mt-2 text-center text-[11px] text-rust-400">
-          Not enough cash
-        </p>
-      )}
-    </ReadoutPanel>
-  );
-}
-
-function RemoteLine({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center justify-between">
-      <dt className="text-mist-300">{label}</dt>
-      <dd className={`font-nums ${value < 0 ? "text-rust-400" : "text-paper-100"}`}>
-        {value < 0 ? "-" : ""}
-        {formatFullRp(Math.abs(value))}
-      </dd>
     </div>
   );
 }
@@ -510,43 +510,76 @@ function TradeTicket({
   quantity,
   setQuantity,
   playerCash,
-  carriedUnits,
-  vehicleCapacity,
+  destKey,
+  setDestKey,
+  destOptions,
+  destLabel,
+  destCapacity,
+  sourceOwned,
+  effectivePrice,
+  sellRemote,
   onConfirm,
 }: {
   commodity: CommodityMarket;
   mode: "buy" | "sell";
   setMode: (m: "buy" | "sell") => void;
-  quantity: number;
-  setQuantity: (q: number) => void;
+  quantity: string;
+  setQuantity: (q: string) => void;
   playerCash: number;
-  carriedUnits: number;
-  vehicleCapacity: number;
+  destKey: string;
+  setDestKey: (k: string) => void;
+  destOptions: DropdownOption[];
+  destLabel?: ReactNode;
+  destCapacity: { used: number; capacity: number };
+  sourceOwned: number;
+  effectivePrice: number;
+  sellRemote: boolean;
   onConfirm: (quantity: number) => void;
 }) {
   const FEE_RATE = 0.015;
+  const DELEGATION_RATE = 0.06;
 
-  const { subtotal, fee, net } = useMemo(() => {
-    const subtotal = quantity * commodity.price;
+  useEffect(() => {
+    if (mode === "sell" && sourceOwned > 0) {
+      const n = Number(quantity) || 0;
+      if (n < 1 || n > sourceOwned) setQuantity(String(sourceOwned));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, destKey, sourceOwned]);
+
+  const qty = Math.max(0, Math.floor(Number(quantity) || 0));
+
+  const { subtotal, fee, delegation, net } = useMemo(() => {
+    const subtotal = qty * effectivePrice;
     const fee = Math.round(subtotal * FEE_RATE);
-    const net = mode === "buy" ? -(subtotal + fee) : subtotal - fee;
-    return { subtotal, fee, net };
-  }, [quantity, commodity.price, mode]);
+    const delegation = sellRemote ? Math.round(subtotal * DELEGATION_RATE) : 0;
+    const net =
+      mode === "buy"
+        ? -(subtotal + fee)
+        : subtotal - fee - delegation;
+    return { subtotal, fee, delegation, net };
+  }, [qty, effectivePrice, mode, sellRemote]);
 
-  const canAfford = mode === "buy" ? Math.abs(net) <= playerCash : quantity <= commodity.playerOwns;
-  const overCapacity = mode === "buy" && carriedUnits + quantity > vehicleCapacity;
+  const hasDest = Boolean(destKey);
+  const overCapacity =
+    mode === "buy" && destCapacity.capacity > 0
+      ? destCapacity.used + qty > destCapacity.capacity
+      : false;
+  const canAfford = mode === "buy" ? Math.abs(net) <= playerCash : qty <= sourceOwned;
+  const valid = hasDest && qty >= 1 && !overCapacity && canAfford;
 
   return (
     <PaperPanel eyebrow={commodity.unit} title={commodity.name}>
       <div className="mb-3 flex justify-between text-[12px]">
         <span className="text-mist-400">
-          Carrying {carriedUnits} / {Number.isFinite(vehicleCapacity) ? vehicleCapacity : "∞"} units
-        </span>
-        {overCapacity && (
-          <span className="text-rust-400">
-            +{quantity} would overflow the vehicle
+          {mode === "buy" ? "Purchase price" : "Sale price"}:{" "}
+          <span className="font-nums text-paper-200">
+            {formatFullRp(effectivePrice)}
           </span>
-        )}
+          {sellRemote && (
+            <span className="ml-1 text-brass-300">· remote</span>
+          )}
+        </span>
       </div>
 
       <div className="mb-4 flex border border-ink-600">
@@ -568,6 +601,43 @@ function TradeTicket({
         ))}
       </div>
 
+      <label className="mb-3 block">
+        <span className="mb-1 block text-[13px] text-mist-300">
+          {mode === "buy" ? "Load into" : "Sell from"}
+        </span>
+        <Dropdown
+          value={destKey}
+          onChange={setDestKey}
+          options={destOptions}
+          placeholder={
+            mode === "buy" ? "Choose a vehicle or warehouse…" : "Choose what to sell…"
+          }
+          emptyLabel="No targets available"
+          searchable
+        />
+        {mode === "buy" && destCapacity.capacity > 0 && (
+          <span className="mt-1 block text-[11px] text-mist-400">
+            {destCapacity.used} / {destCapacity.capacity} units used
+            {overCapacity && (
+              <span className="text-rust-400">
+                {" "}
+                · +{quantity} would overflow
+              </span>
+            )}
+          </span>
+        )}
+        {mode === "sell" && (
+          <span className="mt-1 block text-[11px] text-mist-400">
+            {sourceOwned} {commodity.unit}
+            {sourceOwned === 1 ? "" : "s"} available in{" "}
+            {typeof destLabel === "string" ? destLabel : "target"}
+            {sellRemote && (
+              <span className="text-brass-300"> · +6% delegation</span>
+            )}
+          </span>
+        )}
+      </label>
+
       <label className="mb-4 block">
         <span className="mb-1 block text-[13px] text-mist-300">
           Quantity ({commodity.unit}s)
@@ -576,9 +646,11 @@ function TradeTicket({
           type="number"
           min={1}
           value={quantity}
-          onChange={(e) =>
-            setQuantity(Math.max(1, Number(e.target.value) || 0))
-          }
+          onChange={(e) => setQuantity(e.target.value)}
+          onBlur={() => {
+            const n = Math.max(1, Math.floor(Number(quantity) || 0));
+            if (String(n) !== quantity) setQuantity(String(n));
+          }}
           className="w-full border border-ink-600 bg-ink-900 px-3 py-2 font-nums text-[15px] text-paper-100 focus:border-brass-400 focus:outline-none"
         />
       </label>
@@ -589,6 +661,7 @@ function TradeTicket({
           value={subtotal}
         />
         <Line label="Transaction fee" value={-fee} />
+        {delegation > 0 && <Line label="Delegation fee (6%)" value={-delegation} />}
       </dl>
 
       <div className="mt-3 flex items-center justify-between border-t border-ink-600 pt-3">
@@ -605,8 +678,8 @@ function TradeTicket({
 
       <button
         type="button"
-        disabled={canAfford === false || overCapacity}
-        onClick={() => onConfirm(quantity)}
+        disabled={!valid}
+        onClick={() => onConfirm(qty)}
         className={`mt-5 w-full py-2.5 text-[14px] font-medium text-paper-100 transition-colors disabled:cursor-not-allowed disabled:bg-ink-900/30 disabled:text-paper-200 ${
           mode === "buy"
             ? "bg-jade-500 hover:bg-jade-400"
@@ -615,19 +688,26 @@ function TradeTicket({
       >
         {mode === "buy" ? "Confirm purchase" : "Confirm sale"}
       </button>
-      {overCapacity && (
+      {!hasDest && (
         <p className="mt-2 text-center text-[11px] text-rust-400">
-          Capacity exceeded — free up space in your vehicle or use a warehouse
+          {mode === "buy"
+            ? "Pick a vehicle or warehouse to load into"
+            : "Pick a vehicle or warehouse to sell from"}
         </p>
       )}
-      {!overCapacity && mode === "buy" && !canAfford && (
+      {hasDest && mode === "buy" && overCapacity && destCapacity.capacity > 0 && (
+        <p className="mt-2 text-center text-[11px] text-rust-400">
+          Capacity exceeded — free up space or use another container
+        </p>
+      )}
+      {hasDest && mode === "buy" && !overCapacity && !canAfford && (
         <p className="mt-2 text-center text-[11px] text-rust-400">
           Not enough cash
         </p>
       )}
-      {mode === "sell" && !canAfford && (
+      {hasDest && mode === "sell" && !canAfford && (
         <p className="mt-2 text-center text-[11px] text-rust-400">
-          You don't own enough
+          You don't own enough in that container
         </p>
       )}
     </PaperPanel>

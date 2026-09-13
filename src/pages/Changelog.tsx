@@ -3,6 +3,59 @@ import { ThemeToggle } from "../components/ThemeToggle";
 
 const changelog = [
   {
+    version: "2.11.0",
+    date: "2026-09-13",
+    changes: [
+      "Market 'Owned' sort — sort goods so whatever you hold in the current city (vehicle cargo plus local warehouses) rises to the top; flip the direction to see goods you don't hold first",
+      "Local-only trades — the Market sell dropdown now lists only vehicles and warehouses in the current city, like the buy dropdown; remote warehouse stocks are still sold from the Warehouse page with the usual 6% delegation fee",
+      "Save format v8 — the game version is now recorded as 2.11.0",
+    ],
+  },
+  {
+    version: "2.10.0",
+    date: "2026-09-13",
+    changes: [
+      "Sell vehicles & warehouses — vehicles resell for 50% of the showroom price scaled by condition and mileage wear; warehouses refund 50% of the purchase plus every upgrade paid. You keep at least one vehicle and must empty cargo/goods first",
+      "Market (Remote) warehouse choice — pick which warehouse in the scouted city the agent stores into; capacity follows the chosen warehouse and gates the Buy button",
+      "Collapsible sections — the Garage and Warehouse pages collapse and expand their main blocks (owned vehicles, transfer, buy vehicle, warehouses, store goods, buy warehouse), open by default",
+      "Withdraw-all confirmation — pulling every unit out of a warehouse asks first, showing the 6% delegation fee when the warehouse is remote",
+      "Bounded market prices — supply and demand revert toward 100 inside a hard band, daily moves are capped at ±35%, and prices are clamped around the base; extreme swings like salt Rp 900 → Rp 1.5M are gone, with only special events able to push prices to the extremes",
+      "Living objective bars — buying/selling vehicles or warehouses and taking/repaying loans refresh the Dashboard objectives instantly instead of at the next day",
+      "Softer borders — dropdowns, search boxes, and inputs now get a proper soft border in both themes",
+      "Save format v7 — the game version is now recorded as 2.10.0",
+    ],
+  },
+  {
+    version: "2.9.0",
+    date: "2026-09-13",
+    changes: [
+      "Market sorting — supply and demand are now sort options beside name, price, and trend",
+      "Supply/Demand labels — the market meters read 'Supply' and 'Demand' on desktop, staying as compact S/D on small screens",
+      "Fixed sell button — the 'Confirm sale' used to stay disabled because capacity-overflow logic leaked into the sell flow; selling from any vehicle or warehouse works again",
+      "Quantity fields — the Market and Market (Remote) quantity boxes can be cleared and retyped freely (values clamp on blur, not while you type)",
+      "Market (Remote) — switching to a new city now asks for confirmation first, showing the Rp 50.000 informant fee and your cash balance after the charge",
+      "History date filters — filter trades by a month picker or a custom from/to date range, with a one-click Reset",
+      "Garage alignment — condition and cargo bars line up on the same row, each with its value underneath",
+      "Save format v6 — the game version is now recorded as 2.9.0",
+    ],
+  },
+  {
+    version: "2.8.0",
+    date: "2026-09-13",
+    changes: [
+      "Trade History page — a new /history tab lists every trade with date, item, quantity, price, market fee, and city; filter by buy/sell, search, and watch for the delegate badge whenever an agent acted for you",
+      "Market buy/sell destinations — buying now picks where goods land (a vehicle or a warehouse in the current city); selling can pull from any vehicle or any warehouse, with remote warehouses marked 'remote · 6%'",
+      "Market (Remote) sidebar page — the old 'Buy from other cities' panel is now its own page with a searchable city dropdown; revealing a city's prices costs Rp 50.000 (informant fee) and remote buying only lands in a warehouse you own there",
+      "Warehouse selling — sell goods straight from a warehouse, partially or fully, at that warehouse city's price (remote warehouses add the 6% delegation fee)",
+      "Inventory grouping — group by city (default), flatten across all cities, or limit to custom-selected cities",
+      "Scroll to top — every page navigation returns to the top",
+      "Transfer cargo makeover — the Garage transfer panel uses searchable dropdowns with labels like 'Warehouse #1 · Bandung · Small · Lv 0' and live capacity; the Transfer button turns jade when valid and rust when the quantity overflows",
+      "Warehouse page redesign — no more vehicle inventory list here (it lives in the Garage); full-width warehouse cards with city filter (current city by default), search, goods show/hide, pagination, and per-row sell/withdraw",
+      "Map & Market polish — destination cities are sorted A–Z with search; the Market 'you hold' total counts the vehicle plus every warehouse in the current city; the stray '∞' capacity glyph is gone",
+      "Save format v5 — the selected vehicle is remembered and sanitized on load, and the game version is recorded",
+    ],
+  },
+  {
     version: "2.7.0",
     date: "2026-09-11",
     changes: [

@@ -19,6 +19,16 @@ const BASE_SUPPLY = 100;
 const BASE_DEMAND = 100;
 const MAX_HISTORY = 30;
 
+const MIN_SUPPLY = 12;
+const MAX_SUPPLY = 250;
+const MIN_DEMAND = 12;
+const MAX_DEMAND = 250;
+const REVERT_STRENGTH = 0.06;
+const MAX_DAILY_MOVE = 0.35;
+const MIN_PRICE_MULT = 0.35;
+const MAX_PRICE_MULT = 2.4;
+const MAX_PRICE_MULT_EVENT = 3.2;
+
 export function initCityMarket(
   cityId: CityId,
   rng: RNG
@@ -67,10 +77,15 @@ export function calcPrice(
   demand: number,
   eventFactor: number
 ): number {
-  const supplyFactor = Math.max(0.1, BASE_SUPPLY / Math.max(supply, 1));
-  const demandFactor = Math.max(0.2, demand / BASE_DEMAND);
+  const supplyFactor = Math.max(0.1, BASE_SUPPLY / Math.max(supply, MIN_SUPPLY));
+  const demandFactor = Math.max(0.2, Math.min(demand / BASE_DEMAND, 2.5));
   const noise = 0.95 + Math.random() * 0.1;
-  return Math.round(basePrice * supplyFactor * demandFactor * eventFactor * noise);
+  const cap = eventFactor > 1.05 ? MAX_PRICE_MULT_EVENT : MAX_PRICE_MULT;
+  const ratio = Math.min(
+    cap,
+    Math.max(MIN_PRICE_MULT, supplyFactor * demandFactor * eventFactor * noise)
+  );
+  return Math.round(basePrice * ratio);
 }
 
 export function simulateMarketTick(
@@ -103,6 +118,9 @@ export function simulateMarketTick(
         currentDemand += rngRange(rng, -1, 3);
       }
 
+      currentSupply += (BASE_SUPPLY - currentSupply) * REVERT_STRENGTH;
+      currentDemand += (BASE_DEMAND - currentDemand) * REVERT_STRENGTH;
+
       let eventFactor = 1;
       for (const event of activeEvents) {
         if (
@@ -119,17 +137,22 @@ export function simulateMarketTick(
         }
       }
 
-      currentSupply = Math.max(5, currentSupply);
-      currentDemand = Math.max(5, currentDemand);
+      currentSupply = Math.min(MAX_SUPPLY, Math.max(MIN_SUPPLY, currentSupply));
+      currentDemand = Math.min(MAX_DEMAND, Math.max(MIN_DEMAND, currentDemand));
 
       market.supply[cid] = currentSupply;
       market.demand[cid] = currentDemand;
 
       const price = calcPrice(def.basePrice, currentSupply, currentDemand, eventFactor);
-      market.prices[cid] = price;
+
+      const prev = market.prices[cid];
+      const minP = prev !== undefined ? Math.round(prev * (1 - MAX_DAILY_MOVE)) : price;
+      const maxP = prev !== undefined ? Math.round(prev * (1 + MAX_DAILY_MOVE)) : price;
+      const finalPrice = Math.min(maxP, Math.max(minP, price));
+      market.prices[cid] = finalPrice;
 
       const hist = market.priceHistory[cid] ?? [];
-      hist.push(price);
+      hist.push(finalPrice);
       if (hist.length > MAX_HISTORY) hist.shift();
       market.priceHistory[cid] = hist;
     }
@@ -146,11 +169,11 @@ export function applyTradeImpact(
   const demand = market.demand[commodityId] ?? BASE_DEMAND;
 
   if (isBuy) {
-    market.supply[commodityId] = Math.max(5, supply - quantity * 0.3);
-    market.demand[commodityId] = demand + quantity * 0.1;
+    market.supply[commodityId] = Math.max(MIN_SUPPLY, supply - quantity * 0.3);
+    market.demand[commodityId] = Math.min(MAX_DEMAND, demand + quantity * 0.1);
   } else {
-    market.supply[commodityId] = supply + quantity * 0.3;
-    market.demand[commodityId] = Math.max(5, demand - quantity * 0.1);
+    market.supply[commodityId] = Math.min(MAX_SUPPLY, supply + quantity * 0.3);
+    market.demand[commodityId] = Math.max(MIN_DEMAND, demand - quantity * 0.1);
   }
 }
 

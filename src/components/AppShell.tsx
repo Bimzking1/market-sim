@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   NotebookPen,
@@ -18,6 +18,8 @@ import {
   HelpCircle,
   Boxes,
   BookOpen,
+  Radar,
+  History,
 } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { ThemeToggle } from "./ThemeToggle";
@@ -36,10 +38,12 @@ import type { StaffId } from "../types";
 const navItems = [
   { to: "/dashboard", label: "Ledger", icon: NotebookPen },
   { to: "/market", label: "Market", icon: ArrowLeftRight },
+  { to: "/market-remote", label: "Market (Remote)", icon: Radar },
   { to: "/map", label: "Map", icon: MapIcon },
   { to: "/garage", label: "Garage", icon: Truck },
   { to: "/inventory", label: "Inventory", icon: Boxes },
   { to: "/warehouse", label: "Warehouse", icon: Warehouse },
+  { to: "/history", label: "History", icon: History },
   { to: "/bank", label: "Bank", icon: Landmark },
   { to: "/almanac", label: "Almanac", icon: BookOpen },
   { to: "/insights", label: "Insights", icon: Newspaper },
@@ -48,6 +52,13 @@ const navItems = [
 ];
 
 export function AppShell() {
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [location.pathname]);
+
   useEffect(() => {
     function handleFirstClick() {
       unlockSfx();
@@ -74,7 +85,7 @@ export function AppShell() {
       <MobileDrawer />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
           <div className="mx-auto w-full max-w-6xl">
             <Outlet />
           </div>

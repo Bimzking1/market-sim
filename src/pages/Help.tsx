@@ -90,13 +90,13 @@ const ENTRIES: HelpEntry[] = [
   {
     question: "What does the Inventory page show?",
     answer:
-      "Inventory lists every good you own across all your vehicles and all owned warehouses, stop by stop. Each row expands into a table of purchase lots: how many you bought, at what price, in which city, and on which day — plus the average price you paid per unit. Use it to see what each load cost you before you choose where to sell.",
+      "Inventory lists every good you own across all your vehicles and all owned warehouses, stop by stop. It can be grouped per city (default), across all cities at once, or limited to a custom selection of cities. Each row expands into a table of purchase lots: how many you bought, at what price, in which city, and on which day — plus the average price you paid per unit. Use it to see what each load cost you before you choose where to sell.",
     tags: ["inventory", "lots", "cargo", "average", "purchase price", "stock"],
   },
   {
     question: "Can I move cargo between vehicles and warehouses?",
     answer:
-      "Yes. Every vehicle carries its own load, shown in the Garage with per-type quantity and where each lot was bought. On the same page use 'Transfer cargo' to move goods freely between any two of your vehicles, or between a vehicle and a warehouse in your current city. Transfers are free and instant.",
+      "Yes. Every vehicle carries its own load, shown in the Garage with per-type quantity and where each lot was bought. On the same page use 'Transfer cargo' to move goods freely between any two of your vehicles, or between a vehicle and a warehouse in your current city — pick any item and quantity, and the button turns green when the move fits and red when a quantity overflows. Transfers are free and instant.",
     tags: ["cargo", "transfer", "move", "vehicle", "garage", "load"],
   },
   {
@@ -114,8 +114,20 @@ const ENTRIES: HelpEntry[] = [
   {
     question: "How do I buy goods in another city without travelling?",
     answer:
-      "Own a warehouse in that city, then use the 'Buy from other cities' panel at the bottom of the Market page. Pick the warehouse city, the goods, and the quantity. The deal costs the 1.5% market fee plus a 6% agent (delegation) fee, and the goods are stored straight into that warehouse. You can't buy remotely into a city where you have no warehouse.",
+      "Open the Market (Remote) page in the sidebar and pick a city with the searchable dropdown. Revealing that city's prices costs a one-off informant fee of Rp 50.000 (paid once per city, refunded or not once you travel there). You must already own a warehouse in that city to buy there — goods are bought at that city's market price plus the 1.5% market fee and a 6% agent (delegation) fee, stored straight into your warehouse. Weigh the fees against the cost of simply travelling there yourself.",
     tags: ["remote", "agent", "delegate", "buy from", "other city", "online"],
+  },
+  {
+    question: "Can I sell straight from a warehouse?",
+    answer:
+      "Yes. Open the Warehouse page, find the goods in a warehouse card, enter a quantity (or the full amount), and confirm. The sale uses that warehouse city's market price, minus the 1.5% market fee. Warehouses in other cities add a 6% delegation fee since a local agent handles the sale for you. You can also 'Withdraw all' to pull goods back onto your vehicle.",
+    tags: ["warehouse", "sell", "withdraw", "remote", "agent"],
+  },
+  {
+    question: "What is the History page?",
+    answer:
+      "The History page logs every trade you've made: the date, item, quantity, unit price, market fee, and the city where the deal happened. Filter it to buys or sells, search for a specific good or city, and look for the delegate badge on trades an agent handled for you (remote warehouse sales or remote buys). The summary cards tally your total spend, revenue, and fees.",
+    tags: ["history", "trades", "log", "records", "fees", "delegate"],
   },
   {
     question: "Which goods are perishable?",

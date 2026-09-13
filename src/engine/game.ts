@@ -239,7 +239,7 @@ export function advanceDay(state: GameState): GameState {
 };
 }
 
-function updateObjectives(
+export function updateObjectives(
   objectives: Objective[],
   netWorth: number,
   vehicleCount: number,

@@ -238,6 +238,7 @@ export interface Transaction {
   total: number;
   cityId: CityId;
   remote?: boolean;
+  delegationFee?: number;
 }
 
 export interface FinalReport {

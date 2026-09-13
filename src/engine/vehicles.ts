@@ -59,3 +59,12 @@ export const VEHICLES: Record<VehicleTypeId, VehicleDef> = {
 };
 
 export const ALL_VEHICLE_TYPE_IDS = Object.keys(VEHICLES) as VehicleTypeId[];
+
+export function vehicleResaleValue(
+  def: VehicleDef,
+  condition: number,
+  mileage: number
+): number {
+  const wear = Math.max(0.3, 1 - mileage / 300_000);
+  return Math.round(def.price * 0.5 * (condition / 100) * wear);
+}

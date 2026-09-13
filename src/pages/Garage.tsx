@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { useGameStore } from "../store/gameStore";
 import { ReadoutPanel } from "../components/Panel";
+import { Dropdown, type DropdownOption } from "../components/Dropdown";
 import { confirmAction } from "../components/ConfirmDialog";
 import { toast } from "../components/Toast";
-import { ALL_VEHICLE_TYPE_IDS, VEHICLES } from "../engine/vehicles";
+import { ALL_VEHICLE_TYPE_IDS, VEHICLES, vehicleResaleValue } from "../engine/vehicles";
+import {
+  warehouseUsedCapacity,
+  warehouseSlotParts,
+} from "../engine/warehouses";
 import { COMMODITIES } from "../engine/commodities";
 import { CITIES } from "../engine/cities";
 import { formatFullRp } from "../utils/format";
@@ -15,6 +20,8 @@ interface SourceOption {
   type: "vehicle" | "warehouse";
   id: string;
   label: string;
+  sublabel: string;
+  meta: string;
 }
 
 interface TransferState {
@@ -45,20 +52,32 @@ export function Garage() {
     qty: 0,
   }));
 
-  const sources: SourceOption[] = [
-    ...vehicles.map((v) => ({
-      type: "vehicle" as const,
+  const vehiclesCore: SourceOption[] = vehicles.map((v) => {
+    const def = VEHICLES[v.typeId];
+    const used = Object.values(v.inventory ?? {}).reduce((s, x) => s + x, 0);
+    return {
+      type: "vehicle",
       id: v.id,
-      label: `Vehicle · ${v.name}`,
-    })),
-    ...warehouses
-      .filter((w) => w.cityId === currentCity)
-      .map((w) => ({
-        type: "warehouse" as const,
+      label: v.name,
+      sublabel: def.name,
+      meta: `${used} / ${def.capacity} units`,
+    };
+  });
+
+  const warehousesCore: SourceOption[] = warehouses
+    .filter((w) => w.cityId === currentCity)
+    .map((w) => {
+      const parts = warehouseSlotParts(w, warehouses.findIndex((x) => x.id === w.id) + 1);
+      return {
+        type: "warehouse",
         id: w.id,
-        label: `Warehouse · ${CITIES[w.cityId]?.name ?? w.cityId}`,
-      })),
-  ];
+        label: parts.label,
+        sublabel: parts.sublabel,
+        meta: `${parts.used} / ${w.capacity} units`,
+      };
+    });
+
+  const sources: SourceOption[] = [...vehiclesCore, ...warehousesCore];
 
   const fromOption =
     sources.find((s) => makeKey(s.type, s.id) === transfer.fromKey) ?? sources[0];
@@ -67,29 +86,21 @@ export function Garage() {
   const destinationOptions = (() => {
     if (!fromOption) return [] as SourceOption[];
     if (fromOption.type === "warehouse") {
-      return vehicles.map((v) => ({
-        type: "vehicle" as const,
-        id: v.id,
-        label: `Vehicle · ${v.name}`,
-      }));
+      return vehiclesCore;
     }
     return [
-      ...vehicles
-        .filter((v) => v.id !== fromOption.id)
-        .map((v) => ({
-          type: "vehicle" as const,
-          id: v.id,
-          label: `Vehicle · ${v.name}`,
-        })),
-      ...warehouses
-        .filter((w) => w.cityId === currentCity)
-        .map((w) => ({
-          type: "warehouse" as const,
-          id: w.id,
-          label: `Warehouse · ${CITIES[w.cityId]?.name ?? w.cityId}`,
-        })),
+      ...vehiclesCore.filter((v) => v.id !== fromOption.id),
+      ...warehousesCore,
     ];
   })();
+
+  const toDropdownOptions: DropdownOption[] = destinationOptions.map((d) => ({
+    value: makeKey(d.type, d.id),
+    label: d.label,
+    sublabel: d.sublabel,
+    meta: d.meta,
+    group: d.type === "vehicle" ? "Vehicles" : "Warehouses (this city)",
+  }));
 
   const srcInventory =
     fromOption?.type === "vehicle"
@@ -107,6 +118,51 @@ export function Garage() {
   const toOption = destinationOptions.find(
     (d) => makeKey(d.type, d.id) === transfer.toKey
   );
+
+  const destFits = (() => {
+    if (!toOption || transfer.qty <= 0) return false;
+    if (toOption.type === "vehicle") {
+      const v = vehicles.find((x) => x.id === toOption.id);
+      if (!v) return false;
+      const used = Object.values(v.inventory ?? {}).reduce((s, x) => s + x, 0);
+      return used + transfer.qty <= VEHICLES[v.typeId].capacity;
+    }
+    const w = warehouses.find((x) => x.id === toOption.id);
+    if (!w) return false;
+    return warehouseUsedCapacity(w.inventory) + transfer.qty <= w.capacity;
+  })();
+
+  const hasInput =
+    transfer.qty > 0 &&
+    Boolean(fromOption) &&
+    Boolean(toOption) &&
+    Boolean(selectedCommodity);
+  const transferValid = hasInput && transfer.qty <= maxQty && destFits;
+  const overFlow = hasInput && !transferValid;
+
+  const handleTransfer = () => {
+    if (!fromOption || !toOption || transfer.qty <= 0 || transfer.qty > maxQty || !destFits) return;
+    const ok = actions.transferStock(
+      { type: fromOption.type, id: fromOption.id },
+      { type: toOption.type, id: toOption.id },
+      selectedCommodity[0],
+      transfer.qty
+    );
+    if (ok) {
+      toast({
+        title: "Cargo transferred",
+        message: `${transfer.qty} ${COMMODITIES[selectedCommodity[0]].unit} moved to ${toOption.label}.`,
+        tone: "good",
+      });
+      setTransfer((t) => ({ ...t, qty: 0 }));
+    } else {
+      toast({
+        title: "Transfer failed",
+        message: "Destination does not have enough space.",
+        tone: "bad",
+      });
+    }
+  };
 
   useEffect(() => {
     const validFrom = sources.some(
@@ -134,37 +190,6 @@ export function Garage() {
     });
   }, [fromKey]);
 
-  const canTransfer =
-    Boolean(fromOption) &&
-    Boolean(toOption) &&
-    Boolean(selectedCommodity) &&
-    transfer.qty > 0 &&
-    transfer.qty <= maxQty;
-
-  const handleTransfer = () => {
-    if (!fromOption || !toOption || transfer.qty <= 0 || transfer.qty > maxQty) return;
-    const ok = actions.transferStock(
-      { type: fromOption.type, id: fromOption.id },
-      { type: toOption.type, id: toOption.id },
-      selectedCommodity[0],
-      transfer.qty
-    );
-    if (ok) {
-      toast({
-        title: "Cargo transferred",
-        message: `${transfer.qty} ${COMMODITIES[selectedCommodity[0]].unit} moved to ${toOption.label}.`,
-        tone: "good",
-      });
-      setTransfer((t) => ({ ...t, qty: 0 }));
-    } else {
-      toast({
-        title: "Transfer failed",
-        message: "Destination does not have enough space.",
-        tone: "bad",
-      });
-    }
-  };
-
   return (
     <div className="space-y-8">
       <header>
@@ -174,7 +199,7 @@ export function Garage() {
         </h1>
       </header>
 
-      <ReadoutPanel title="Owned vehicles" eyebrow="Cargo and upkeep">
+      <ReadoutPanel title="Owned vehicles" eyebrow="Cargo and upkeep" collapsible defaultOpen>
         {vehicles.length === 0 ? (
           <p className="text-[14px] text-mist-400">
             You don't own any vehicles yet.
@@ -193,69 +218,63 @@ export function Garage() {
                 }
                 actions={actions}
                 playerCash={playerCash}
+                canSell={vehicles.length > 1}
               />
             ))}
           </div>
         )}
       </ReadoutPanel>
 
-      <ReadoutPanel title="Transfer cargo" eyebrow="Vehicle ⇄ vehicle · vehicle ⇄ warehouse (current city)">
+      <ReadoutPanel title="Transfer cargo" eyebrow="Vehicle ⇄ vehicle · vehicle ⇄ warehouse (current city)" collapsible defaultOpen>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-[13px] text-mist-400">From</label>
-            <select
+            <Dropdown
               value={fromKey}
-              onChange={(e) =>
-                setTransfer((t) => ({ ...t, fromKey: e.target.value, toKey: "", qty: 0 }))
+              onChange={(v) =>
+                setTransfer((t) => ({ ...t, fromKey: v, toKey: "", qty: 0 }))
               }
-              className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[14px] text-paper-100 focus:border-brass-400 focus:outline-none"
-            >
-              {sources.map((s) => (
-                <option key={makeKey(s.type, s.id)} value={makeKey(s.type, s.id)}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+              options={sources.map((s) => ({
+                value: makeKey(s.type, s.id),
+                label: s.label,
+                sublabel: s.sublabel,
+                meta: s.meta,
+                group: s.type === "vehicle" ? "Vehicles" : "Warehouses (this city)",
+              }))}
+              placeholder="Select a source…"
+              searchable
+            />
           </div>
           <div>
             <label className="mb-1 block text-[13px] text-mist-400">To</label>
-            <select
+            <Dropdown
               value={transfer.toKey}
-              onChange={(e) =>
-                setTransfer((t) => ({ ...t, toKey: e.target.value }))
-              }
-              className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[14px] text-paper-100 focus:border-brass-400 focus:outline-none"
-            >
-              {destinationOptions.length === 0 && (
-                <option value="">No targets</option>
-              )}
-              {destinationOptions.map((d) => (
-                <option key={makeKey(d.type, d.id)} value={makeKey(d.type, d.id)}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setTransfer((t) => ({ ...t, toKey: v }))}
+              options={toDropdownOptions}
+              placeholder="Select a destination…"
+              emptyLabel="No targets available"
+              searchable
+            />
           </div>
           <div>
             <label className="mb-1 block text-[13px] text-mist-400">Item</label>
-            <select
+            <Dropdown
               value={selectedCommodity ? selectedCommodity[0] : ""}
-              onChange={(e) =>
+              onChange={(v) =>
                 setTransfer((t) => ({
                   ...t,
-                  commodityId: e.target.value as CommodityId | "",
+                  commodityId: v as CommodityId | "",
                   qty: 0,
                 }))
               }
-              className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[14px] text-paper-100 focus:border-brass-400 focus:outline-none"
-            >
-              {cargoOptions.length === 0 && <option value="">No cargo here</option>}
-              {cargoOptions.map(([cid, q]) => (
-                <option key={cid} value={cid}>
-                  {COMMODITIES[cid].emoji} {COMMODITIES[cid].name} · {q} available
-                </option>
-              ))}
-            </select>
+              options={cargoOptions.map(([cid, q]) => ({
+                value: cid,
+                label: `${COMMODITIES[cid].emoji} ${COMMODITIES[cid].name}`,
+                sublabel: `${q} ${COMMODITIES[cid].unit}${q === 1 ? "" : "s"} available`,
+              }))}
+              placeholder="No cargo here"
+              emptyLabel="No cargo here"
+            />
           </div>
           <div>
             <label className="mb-1 block text-[13px] text-mist-400">
@@ -276,23 +295,39 @@ export function Garage() {
             />
           </div>
         </div>
-        <button
-          type="button"
-          disabled={!canTransfer}
-          onClick={handleTransfer}
-          className="mt-4 inline-flex items-center gap-2 bg-ink-900 px-4 py-2 text-[13px] text-paper-100 transition-colors hover:bg-ink-700 disabled:cursor-not-allowed disabled:bg-ink-900/30"
-        >
-          <ArrowRightLeft className="h-4 w-4" />
-          Transfer
-        </button>
-        {fromOption && fromOption.type === "warehouse" && (
-          <p className="mt-2 text-[12px] text-brass-400">
-            Warehouse transfers only reach vehicles you own (this city's warehouses only).
-          </p>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            disabled={!transferValid}
+            onClick={handleTransfer}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
+              overFlow
+                ? "bg-rust-500/80 text-paper-100 hover:bg-rust-400"
+                : transferValid
+                ? "bg-jade-500 text-paper-100 hover:bg-jade-400"
+                : "bg-ink-900/30 text-paper-200"
+            }`}
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            Transfer
+          </button>
+          {overFlow && (
+            <span className="text-[12px] text-rust-400">
+              {transfer.qty > maxQty
+                ? `${transfer.qty} exceeds the ${maxQty} available`
+                : "Destination capacity exceeded"}
+            </span>
+          )}
+          {fromOption && fromOption.type === "warehouse" && (
+            <span className="text-[12px] text-brass-400">
+              Warehouse transfers only reach vehicles you own (this city's
+              warehouses only).
+            </span>
+          )}
+        </div>
       </ReadoutPanel>
 
-      <ReadoutPanel title="Buy a vehicle">
+      <ReadoutPanel title="Buy a vehicle" collapsible defaultOpen>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ALL_VEHICLE_TYPE_IDS.map((typeId) => {
             const def = VEHICLES[typeId];
@@ -358,6 +393,7 @@ function VehicleCard({
   onToggleCargo,
   actions,
   playerCash,
+  canSell,
 }: {
   vehicle: Vehicle;
   isSelected: boolean;
@@ -366,6 +402,7 @@ function VehicleCard({
   onToggleCargo: () => void;
   actions: any;
   playerCash: number;
+  canSell: boolean;
 }) {
   const v = vehicle;
   const def = VEHICLES[v.typeId];
@@ -373,6 +410,7 @@ function VehicleCard({
     ([, q]) => q > 0
   );
   const used = cargo.reduce((s, [, q]) => s + q, 0);
+  const resaleValue = vehicleResaleValue(def, v.condition, v.mileage);
 
   return (
     <div
@@ -400,6 +438,40 @@ function VehicleCard({
               Active
             </span>
           )}
+          <button
+            type="button"
+            disabled={!canSell || cargo.length > 0}
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: `Sell ${v.name}?`,
+                description: `Resale value is based on new purchase price, current condition (${Math.round(v.condition)}%) and mileage (${v.mileage.toLocaleString()} km). ${
+                  cargo.length > 0
+                    ? "This vehicle still carries cargo, which would be lost."
+                    : ""
+                }`,
+                lines: [
+                  { label: "Condition", value: `${Math.round(v.condition)}%` },
+                  { label: "Mileage", value: `${v.mileage.toLocaleString()} km` },
+                  { label: "Resale value", value: `+${formatFullRp(resaleValue)}` },
+                ],
+                currentCash: playerCash,
+                cashChange: resaleValue,
+                confirmLabel: "Sell vehicle",
+                tone: "danger",
+              });
+              if (ok) actions.sellVehicle(v.id);
+            }}
+            className="border border-ink-600 px-3 py-1.5 text-[12px] text-mist-300 hover:border-rust-400 hover:text-rust-300 disabled:cursor-not-allowed disabled:opacity-40"
+            title={
+              !canSell
+                ? "You must keep at least one vehicle"
+                : cargo.length > 0
+                ? "Empty the cargo first"
+                : undefined
+            }
+          >
+            Sell
+          </button>
         </div>
       </div>
 
@@ -422,15 +494,15 @@ function VehicleCard({
         </div>
         <div>
           <p className="text-mist-400">Cargo</p>
-          <p className="mt-1 font-nums text-paper-200">
-            {used} / {def.capacity} units
-          </p>
           <div className="mt-1 h-2 bg-ink-700">
             <div
               className="h-full bg-jade-400/80"
               style={{ width: `${Math.min(100, (used / def.capacity) * 100)}%` }}
             />
           </div>
+          <p className="mt-1 font-nums text-paper-200">
+            {used} / {def.capacity} units
+          </p>
         </div>
         <div>
           <p className="text-mist-400">Mileage</p>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGameStore } from "../store/gameStore";
 import { ReadoutPanel } from "../components/Panel";
 import { confirmAction } from "../components/ConfirmDialog";
@@ -15,9 +16,15 @@ export function Map() {
   const selectedVehicleId = useGameStore((s) => s.selectedVehicleId);
   const playerCash = useGameStore((s) => s.playerCash);
   const actions = useGameStore((s) => s.actions);
+  const [search, setSearch] = useState("");
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
   const cityName = CITIES[currentCity]?.name ?? currentCity;
+
+  const q = search.trim().toLowerCase();
+  const candidates = ALL_CITY_IDS.filter((id) => id !== currentCity)
+    .filter((id) => !q || CITIES[id].name.toLowerCase().includes(q))
+    .sort((a, b) => CITIES[a].name.localeCompare(CITIES[b].name));
 
   return (
     <div className="space-y-6">
@@ -35,17 +42,33 @@ export function Map() {
           </p>
         </ReadoutPanel>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {ALL_CITY_IDS.filter((id) => id !== currentCity).map((cityId) => (
-            <CityCard
-              key={cityId}
-              cityId={cityId}
-              currentCity={currentCity}
-              vehicle={selectedVehicle}
-              cash={playerCash}
-              onTravel={async () => actions.travelTo(cityId)}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search destination city…"
+                className="w-full border border-ink-600 bg-ink-900 px-3 py-2 text-[13px] text-paper-100 placeholder:text-mist-400 focus:border-brass-400 focus:outline-none"
+              />
+            </div>
+            <span className="text-[12px] text-mist-400">
+              {candidates.length} {candidates.length === 1 ? "destination" : "destinations"} · sorted A–Z
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {candidates.map((cityId) => (
+              <CityCard
+                key={cityId}
+                cityId={cityId}
+                currentCity={currentCity}
+                vehicle={selectedVehicle}
+                cash={playerCash}
+                onTravel={async () => actions.travelTo(cityId)}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

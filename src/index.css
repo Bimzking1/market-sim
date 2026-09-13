@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --color-ink-500: var(--c-ink-500);
+  --color-ink-600: var(--c-ink-600);
   --color-ink-700: var(--c-ink-700);
   --color-ink-800: var(--c-ink-800);
   --color-ink-900: var(--c-ink-900);
@@ -31,6 +33,8 @@
 }
 
 :root {
+  --c-ink-500: #5c5c5c;
+  --c-ink-600: #4a4a4a;
   --c-ink-700: #3e3e3e;
   --c-ink-800: #2c2c2c;
   --c-ink-900: #1c1c1c;
@@ -60,6 +64,8 @@
 }
 
 .light {
+  --c-ink-500: #b3ab9f;
+  --c-ink-600: #c4bdb2;
   --c-ink-700: #c4bdb2;
   --c-ink-800: #ddd7cd;
   --c-ink-900: #f2efe9;

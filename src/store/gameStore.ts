@@ -8,16 +8,19 @@ import type {
   StaffId,
   Warehouse,
   InventoryLot,
+  Objective,
 } from "../types";
 import { COMMODITIES } from "../engine/commodities";
-import { VEHICLES } from "../engine/vehicles";
+import { VEHICLES, vehicleResaleValue } from "../engine/vehicles";
 import {
   WAREHOUSES,
   warehouseCapacity,
   warehouseBuyCost,
   warehouseUpgradeCost,
   warehouseUsedCapacity,
+  warehouseRefundValue,
   delegationFee,
+  REMOTE_MARKET_INFO_FEE,
 } from "../engine/warehouses";
 import { STAFF, staffContractCost } from "../engine/staff";
 import {
@@ -28,29 +31,62 @@ import {
 import { calcTripExpenses, travelDays, degradeVehicle } from "../engine/travel";
 import { applyTradeImpact } from "../engine/market";
 import { createLoan, repayLoan } from "../engine/banking";
-import { createNewGame, advanceDay, calcNetWorth } from "../engine/game";
+import {
+  createNewGame,
+  advanceDay,
+  calcNetWorth,
+  updateObjectives,
+} from "../engine/game";
 import { buildScheduledEvents } from "../engine/schedule";
 import { spoilLots } from "../engine/perishable";
 import { addLots, consumeLots, splitLots } from "../engine/lots";
 import { DAY_MS } from "../engine/calendar";
 import { mulberry32, rngInt } from "../engine/rng";
 
+function refreshObjectives(state: GameState): { objectives: Objective[] } {
+  const visitedCities = new Set(state.transactions.map((t) => t.cityId));
+  visitedCities.add(state.currentCity);
+  return {
+    objectives: updateObjectives(
+      state.objectives,
+      state.playerNetWorth,
+      state.vehicles.length,
+      state.warehouses.length,
+      state.transactions,
+      visitedCities.size,
+      state.loans
+    ),
+  };
+}
+
 interface GameStore extends GameState {
   actions: {
     newGame: (seed?: number) => void;
-    buyCommodity: (commodityId: CommodityId, quantity: number) => void;
-    sellCommodity: (commodityId: CommodityId, quantity: number) => void;
+    buyCommodity: (
+      commodityId: CommodityId,
+      quantity: number,
+      dest: { type: "vehicle" | "warehouse"; id: string }
+    ) => void;
+    sellCommodity: (
+      commodityId: CommodityId,
+      quantity: number,
+      source: { type: "vehicle" | "warehouse"; id: string }
+    ) => void;
     buyRemoteCommodity: (
       commodityId: CommodityId,
       quantity: number,
-      cityId: CityId
+      cityId: CityId,
+      warehouseId: string
     ) => void;
+    revealRemoteMarket: (cityId: CityId) => boolean;
     travelTo: (cityId: CityId) => void;
     buyVehicle: (typeId: string) => void;
     selectVehicle: (vehicleId: string) => void;
     serviceVehicle: (vehicleId: string) => void;
+    sellVehicle: (vehicleId: string) => void;
     buyWarehouse: (typeId: string, cityId?: CityId) => void;
     upgradeWarehouse: (warehouseId: string) => void;
+    sellWarehouse: (warehouseId: string) => void;
     storeGoods: (commodityId: CommodityId, quantity: number, warehouseId: string) => void;
     withdrawGoods: (commodityId: CommodityId, quantity: number, warehouseId: string) => void;
     transferStock: (
@@ -78,49 +114,71 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set(createNewGame(seed));
     },
 
-    buyCommodity: (commodityId, quantity) => {
+    buyCommodity: (commodityId, quantity, dest) => {
       const state = get();
       if (state.gameOver) return;
       if (!citySellsCommodity(state.currentCity, commodityId)) return;
-
-      const selectedVehicle = state.vehicles.find(
-        (v) => v.id === state.selectedVehicleId
-      );
-      if (!selectedVehicle) return;
-      const vehicleDef = VEHICLES[selectedVehicle.typeId];
-
-      const carried = Object.values(selectedVehicle.inventory ?? {}).reduce(
-        (sum, v) => sum + v,
-        0
-      );
-      if (carried + quantity > vehicleDef.capacity) return;
 
       const market = state.cityMarkets[state.currentCity];
       const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
       const totalCost = quantity * price;
       const fee = Math.round(totalCost * 0.015);
       const netCost = totalCost + fee;
-
       if (netCost > state.playerCash) return;
 
-      const newVehicleInventory = { ...(selectedVehicle.inventory ?? {}) };
-      newVehicleInventory[commodityId] =
-        (newVehicleInventory[commodityId] ?? 0) + quantity;
+      let vehicles = state.vehicles;
+      let warehouses = state.warehouses;
 
-      const newVehicleLots = addLots(selectedVehicle.lots, commodityId, [
-        {
-          qty: quantity,
-          unitPrice: price,
-          cityId: state.currentCity,
-          day: state.currentDay,
-        },
-      ]);
+      if (dest.type === "vehicle") {
+        const idx = vehicles.findIndex((v) => v.id === dest.id);
+        if (idx < 0) return;
+        const v = vehicles[idx];
+        const vehicleDef = VEHICLES[v.typeId];
+        const carried = Object.values(v.inventory ?? {}).reduce(
+          (sum, x) => sum + x,
+          0
+        );
+        if (carried + quantity > vehicleDef.capacity) return;
 
-      const newVehicles = state.vehicles.map((v) =>
-        v.id === selectedVehicle.id
-          ? { ...v, inventory: newVehicleInventory, lots: newVehicleLots }
-          : v
-      );
+        const newVehicleInventory = { ...(v.inventory ?? {}) };
+        newVehicleInventory[commodityId] =
+          (newVehicleInventory[commodityId] ?? 0) + quantity;
+        const newVehicleLots = addLots(v.lots, commodityId, [
+          {
+            qty: quantity,
+            unitPrice: price,
+            cityId: state.currentCity,
+            day: state.currentDay,
+          },
+        ]);
+        vehicles = vehicles.map((vv, i) =>
+          i === idx
+            ? { ...vv, inventory: newVehicleInventory, lots: newVehicleLots }
+            : vv
+        );
+      } else {
+        const idx = warehouses.findIndex((w) => w.id === dest.id);
+        if (idx < 0) return;
+        const w = warehouses[idx];
+        if (w.cityId !== state.currentCity) return;
+        if (warehouseUsedCapacity(w.inventory) + quantity > w.capacity) return;
+
+        const newWhInventory = { ...w.inventory };
+        newWhInventory[commodityId] = (newWhInventory[commodityId] ?? 0) + quantity;
+        const newWhLots = addLots(w.lots, commodityId, [
+          {
+            qty: quantity,
+            unitPrice: price,
+            cityId: state.currentCity,
+            day: state.currentDay,
+          },
+        ]);
+        warehouses = warehouses.map((ww, i) =>
+          i === idx
+            ? { ...ww, inventory: newWhInventory, lots: newWhLots }
+            : ww
+        );
+      }
 
       applyTradeImpact(market, commodityId, quantity, true);
 
@@ -135,59 +193,90 @@ export const useGameStore = create<GameStore>((set, get) => ({
         unitPrice: price,
         total: totalCost,
         cityId: state.currentCity,
+        delegationFee: 0,
       };
 
       const newCash = state.playerCash - netCost;
       const newNetWorth = calcNetWorth({
         ...state,
         playerCash: newCash,
-        vehicles: newVehicles,
+        vehicles,
+        warehouses,
+        cityMarkets: newCityMarkets,
       });
 
       set({
         playerCash: newCash,
-        vehicles: newVehicles,
+        vehicles,
+        warehouses,
         cityMarkets: newCityMarkets,
         transactions: [...state.transactions, transaction],
         playerNetWorth: newNetWorth,
       });
     },
 
-    sellCommodity: (commodityId, quantity) => {
+    sellCommodity: (commodityId, quantity, source) => {
       const state = get();
       if (state.gameOver) return;
-      if (!citySellsCommodity(state.currentCity, commodityId)) return;
 
-      const selectedVehicle = state.vehicles.find(
-        (v) => v.id === state.selectedVehicleId
-      );
-      if (!selectedVehicle) return;
+      let vehicles = state.vehicles;
+      let warehouses = state.warehouses;
+      let marketCity = state.currentCity;
+      let isRemote = false;
 
-      const owned = selectedVehicle.inventory?.[commodityId] ?? 0;
-      if (quantity > owned) return;
+      if (source.type === "vehicle") {
+        const idx = vehicles.findIndex((v) => v.id === source.id);
+        if (idx < 0) return;
+        const v = vehicles[idx];
+        const owned = v.inventory?.[commodityId] ?? 0;
+        if (quantity > owned) return;
+        if (!citySellsCommodity(state.currentCity, commodityId)) return;
 
-      const market = state.cityMarkets[state.currentCity];
+        const newVehicleInventory = { ...(v.inventory ?? {}) };
+        newVehicleInventory[commodityId] = owned - quantity;
+        if (newVehicleInventory[commodityId] <= 0)
+          delete newVehicleInventory[commodityId];
+        const newVehicleLots = consumeLots(v.lots, commodityId, quantity);
+
+        vehicles = vehicles.map((vv, i) =>
+          i === idx
+            ? { ...vv, inventory: newVehicleInventory, lots: newVehicleLots }
+            : vv
+        );
+      } else {
+        const idx = warehouses.findIndex((w) => w.id === source.id);
+        if (idx < 0) return;
+        const w = warehouses[idx];
+        const owned = w.inventory[commodityId] ?? 0;
+        if (quantity > owned) return;
+        marketCity = w.cityId;
+        isRemote = marketCity !== state.currentCity;
+        if (!citySellsCommodity(marketCity, commodityId)) return;
+
+        const newWhInventory = { ...w.inventory };
+        newWhInventory[commodityId] = owned - quantity;
+        if (newWhInventory[commodityId] <= 0)
+          delete newWhInventory[commodityId];
+        const newWhLots = consumeLots(w.lots, commodityId, quantity);
+
+        warehouses = warehouses.map((ww, i) =>
+          i === idx
+            ? { ...ww, inventory: newWhInventory, lots: newWhLots }
+            : ww
+        );
+      }
+
+      const market = state.cityMarkets[marketCity];
       const price = market.prices[commodityId] ?? COMMODITIES[commodityId].basePrice;
       const totalRevenue = quantity * price;
-      const fee = Math.round(totalRevenue * 0.015);
-      const netRevenue = totalRevenue - fee;
-
-      const newVehicleInventory = { ...(selectedVehicle.inventory ?? {}) };
-      newVehicleInventory[commodityId] = owned - quantity;
-      if (newVehicleInventory[commodityId] <= 0) delete newVehicleInventory[commodityId];
-
-      const newVehicleLots = consumeLots(selectedVehicle.lots, commodityId, quantity);
-
-      const newVehicles = state.vehicles.map((v) =>
-        v.id === selectedVehicle.id
-          ? { ...v, inventory: newVehicleInventory, lots: newVehicleLots }
-          : v
-      );
+      const marketFee = Math.round(totalRevenue * 0.015);
+      const delegation = isRemote ? delegationFee(totalRevenue) : 0;
+      const netRevenue = totalRevenue - marketFee - delegation;
 
       applyTradeImpact(market, commodityId, quantity, false);
 
       const newMarket = { ...market };
-      const newCityMarkets = { ...state.cityMarkets, [state.currentCity]: newMarket };
+      const newCityMarkets = { ...state.cityMarkets, [marketCity]: newMarket };
 
       const transaction: Transaction = {
         day: state.currentDay,
@@ -196,31 +285,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
         quantity,
         unitPrice: price,
         total: totalRevenue,
-        cityId: state.currentCity,
+        cityId: marketCity,
+        remote: isRemote || undefined,
+        delegationFee: delegation || undefined,
       };
 
       const newCash = state.playerCash + netRevenue;
       const newNetWorth = calcNetWorth({
         ...state,
         playerCash: newCash,
-        vehicles: newVehicles,
+        vehicles,
+        warehouses,
+        cityMarkets: newCityMarkets,
       });
 
       set({
         playerCash: newCash,
-        vehicles: newVehicles,
+        vehicles,
+        warehouses,
         cityMarkets: newCityMarkets,
         transactions: [...state.transactions, transaction],
         playerNetWorth: newNetWorth,
       });
     },
 
-    buyRemoteCommodity: (commodityId, quantity, cityId) => {
+    buyRemoteCommodity: (commodityId, quantity, cityId, warehouseId) => {
       const state = get();
       if (state.gameOver || cityId === state.currentCity) return;
       if (!citySellsCommodity(cityId, commodityId)) return;
 
-      const wh = state.warehouses.find((w) => w.cityId === cityId);
+      const wh = state.warehouses.find(
+        (w) => w.id === warehouseId && w.cityId === cityId
+      );
       if (!wh) return;
 
       const market = state.cityMarkets[cityId];
@@ -262,6 +358,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         total: subtotal,
         cityId,
         remote: true,
+        delegationFee: delegation,
       };
 
       const newCash = state.playerCash - totalCost;
@@ -279,6 +376,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         transactions: [...state.transactions, transaction],
         playerNetWorth: newNetWorth,
       });
+    },
+
+    revealRemoteMarket: (cityId) => {
+      const state = get();
+      if (state.gameOver) return false;
+      if (cityId === state.currentCity) return false;
+      if (state.playerCash < REMOTE_MARKET_INFO_FEE) return false;
+      const newCash = state.playerCash - REMOTE_MARKET_INFO_FEE;
+      set({
+        playerCash: newCash,
+        playerNetWorth: calcNetWorth({ ...state, playerCash: newCash }),
+      });
+      return true;
     },
 
     travelTo: (cityId) => {
@@ -379,10 +489,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
         lots: {} as Partial<Record<CommodityId, InventoryLot[]>>,
       };
 
+      const newVehicles = [...state.vehicles, newVehicle];
+      const newCash = state.playerCash - def.price;
+      const newNetWorth = calcNetWorth({
+        ...state,
+        playerCash: newCash,
+        vehicles: newVehicles,
+      });
+
       set({
-        playerCash: state.playerCash - def.price,
-        vehicles: [...state.vehicles, newVehicle],
-        playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - def.price }),
+        playerCash: newCash,
+        vehicles: newVehicles,
+        selectedVehicleId: state.selectedVehicleId ?? newVehicle.id,
+        playerNetWorth: newNetWorth,
+        ...refreshObjectives({
+          ...state,
+          playerCash: newCash,
+          vehicles: newVehicles,
+          playerNetWorth: newNetWorth,
+        }),
       });
     },
 
@@ -409,6 +534,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerCash: state.playerCash - cost,
         vehicles: newVehicles,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - cost, vehicles: newVehicles }),
+      });
+    },
+
+    sellVehicle: (vehicleId) => {
+      const state = get();
+      if (state.gameOver) return;
+      if (state.vehicles.length <= 1) return;
+
+      const idx = state.vehicles.findIndex((v) => v.id === vehicleId);
+      if (idx < 0) return;
+      const v = state.vehicles[idx];
+      const def = VEHICLES[v.typeId as keyof typeof VEHICLES];
+      if (!def) return;
+
+      const value = vehicleResaleValue(def, v.condition, v.mileage);
+      const newVehicles = state.vehicles.filter((x) => x.id !== vehicleId);
+      const selectedVehicleId =
+        state.selectedVehicleId === vehicleId
+          ? newVehicles[0].id
+          : state.selectedVehicleId;
+      const newCash = state.playerCash + value;
+      const newNetWorth = calcNetWorth({
+        ...state,
+        playerCash: newCash,
+        vehicles: newVehicles,
+      });
+
+      set({
+        playerCash: newCash,
+        vehicles: newVehicles,
+        selectedVehicleId,
+        playerNetWorth: newNetWorth,
+        ...refreshObjectives({
+          ...state,
+          playerCash: newCash,
+          vehicles: newVehicles,
+          playerNetWorth: newNetWorth,
+        }),
       });
     },
 
@@ -441,6 +604,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerCash: state.playerCash - cost,
         warehouses: [...state.warehouses, newWarehouse],
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - cost }),
+        ...refreshObjectives({
+          ...state,
+          playerCash: state.playerCash - cost,
+        }),
       });
     },
 
@@ -470,6 +637,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerCash: state.playerCash - cost,
         warehouses: newWarehouses,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - cost }),
+        ...refreshObjectives({
+          ...state,
+          playerCash: state.playerCash - cost,
+          warehouses: newWarehouses,
+        }),
+      });
+    },
+
+    sellWarehouse: (warehouseId) => {
+      const state = get();
+      if (state.gameOver) return;
+
+      const wh = state.warehouses.find((w) => w.id === warehouseId);
+      if (!wh) return;
+      const def = WAREHOUSES[wh.typeId as keyof typeof WAREHOUSES];
+      if (!def) return;
+      if (warehouseUsedCapacity(wh.inventory) > 0) return;
+
+      const mult = CITY_COST_MULTIPLIER[wh.cityId] ?? 1;
+      const value = warehouseRefundValue(def, wh.level, mult);
+      const newWarehouses = state.warehouses.filter((w) => w.id !== warehouseId);
+      const newCash = state.playerCash + value;
+      const newNetWorth = calcNetWorth({
+        ...state,
+        playerCash: newCash,
+        warehouses: newWarehouses,
+      });
+
+      set({
+        playerCash: newCash,
+        warehouses: newWarehouses,
+        playerNetWorth: newNetWorth,
+        ...refreshObjectives({
+          ...state,
+          playerCash: newCash,
+          warehouses: newWarehouses,
+          playerNetWorth: newNetWorth,
+        }),
       });
     },
 
@@ -747,6 +952,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerCash: state.playerCash + amount,
         loans: newLoans,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash + amount, loans: newLoans }),
+        ...refreshObjectives({ ...state, playerCash: state.playerCash + amount, loans: newLoans }),
       });
     },
 
@@ -764,6 +970,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         playerCash: state.playerCash - paid,
         loans: newLoans,
         playerNetWorth: calcNetWorth({ ...state, playerCash: state.playerCash - paid, loans: newLoans }),
+        ...refreshObjectives({ ...state, playerCash: state.playerCash - paid, loans: newLoans }),
       });
     },
 
@@ -776,8 +983,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     saveGame: () => {
       const state = get();
       const save = {
-        saveVersion: 4,
-        gameVersion: "2.5.0",
+        saveVersion: 8,
+        gameVersion: "2.11.0",
         createdAt: new Date().toISOString(),
         gameState: {
           seed: state.seed,
@@ -823,6 +1030,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
             lots: v.lots ?? {},
           }));
 
+          const fallbackSelectedId =
+            vehicles[0]?.id ?? null;
+          const selectedVehicleId =
+            vehicles.some((v: any) => v.id === gs.selectedVehicleId)
+              ? gs.selectedVehicleId
+              : fallbackSelectedId;
+
           if (
             gs.inventory != null &&
             Object.keys(gs.inventory).length > 0 &&
@@ -848,8 +1062,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             scheduledEvents,
             staffHires: gs.staffHires ?? {},
             vehicles,
-            selectedVehicleId:
-              gs.selectedVehicleId ?? (vehicles[0]?.id ?? null),
+            selectedVehicleId,
             warehouses: (gs.warehouses ?? []).map((w: any) => ({
               ...w,
               level: w.level ?? 0,
