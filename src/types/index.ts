@@ -112,6 +112,8 @@ export interface CommodityDef {
 export interface InventoryLot {
   qty: number;
   unitPrice: number;
+  cityId?: CityId;
+  day?: number;
 }
 
 export interface CityDef {
@@ -181,6 +183,8 @@ export interface Vehicle {
   condition: number;
   fuel: number;
   mileage: number;
+  inventory: Partial<Record<CommodityId, number>>;
+  lots: Partial<Record<CommodityId, InventoryLot[]>>;
 }
 
 export interface Warehouse {
@@ -234,6 +238,7 @@ export interface Transaction {
   total: number;
   cityId: CityId;
   remote?: boolean;
+  delegationFee?: number;
 }
 
 export interface FinalReport {
@@ -289,8 +294,6 @@ export interface GameState {
   selectedVehicleId: string | null;
 
   warehouses: Warehouse[];
-  inventory: Partial<Record<CommodityId, number>>;
-  inventoryLots: Partial<Record<CommodityId, InventoryLot[]>>;
 
   staffHires: Partial<Record<StaffId, number>>;
 

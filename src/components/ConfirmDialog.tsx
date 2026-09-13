@@ -53,9 +53,9 @@ export function ConfirmDialog() {
 
   const confirmTone =
     cfg.tone === "good"
-      ? "bg-jade-500/90 text-ink-950 hover:bg-jade-400"
+      ? "bg-jade-500/90 text-paper-100 hover:bg-jade-400"
       : cfg.tone === "danger"
-      ? "bg-rust-500/90 text-ink-950 hover:bg-rust-400"
+      ? "bg-rust-500/90 text-paper-100 hover:bg-rust-400"
       : cfg.danger
       ? "bg-rust-500/25 text-rust-300 hover:bg-rust-500/35"
       : "bg-brass-400/15 text-brass-300 hover:bg-brass-400/25";

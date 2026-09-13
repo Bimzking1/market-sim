@@ -1,4 +1,5 @@
-import type { WarehouseDef, WarehouseTypeId, LedgerLine } from "../types";
+import type { WarehouseDef, WarehouseTypeId, LedgerLine, CityId } from "../types";
+import { CITIES } from "./cities";
 
 export const WAREHOUSES: Record<WarehouseTypeId, WarehouseDef> = {
   small: {
@@ -40,6 +41,32 @@ export const WAREHOUSE_MAX_UPGRADES = 3;
 export const WAREHOUSE_UPGRADE_FACTOR = 0.25;
 export const WAREHOUSE_UPGRADE_COST_PER_UNIT = 800;
 export const DELEGATION_FEE_RATE = 0.06;
+export const REMOTE_MARKET_INFO_FEE = 50_000;
+
+export interface WarehouseSlot {
+  id: string;
+  cityId: CityId;
+  typeId: WarehouseTypeId;
+  level: number;
+  capacity: number;
+  inventory?: Partial<Record<string, number>>;
+}
+
+export function warehouseUsedUnits(wh: WarehouseSlot): number {
+  return warehouseUsedCapacity(wh.inventory ?? {});
+}
+
+export function warehouseSlotParts(
+  wh: WarehouseSlot,
+  index: number
+): { label: string; sublabel: string; used: number } {
+  const def = WAREHOUSES[wh.typeId];
+  return {
+    label: `Warehouse #${index} · ${CITIES[wh.cityId].name}`,
+    sublabel: `${def.name}${wh.level > 0 ? ` · Lv ${wh.level}` : " · Base"}`,
+    used: warehouseUsedUnits(wh),
+  };
+}
 
 export function warehouseUsedCapacity(
   inventory: Partial<Record<string, number>>
@@ -80,6 +107,15 @@ export function warehouseDailyCost(def: WarehouseDef, cityMultiplier: number = 1
 
 export function delegationFee(cost: number): number {
   return Math.round(cost * DELEGATION_FEE_RATE);
+}
+
+export function warehouseRefundValue(def: WarehouseDef, level: number, cityMultiplier: number = 1): number {
+  const base = warehouseBuyCost(def, cityMultiplier);
+  let upgrades = 0;
+  for (let l = 0; l < level; l++) {
+    upgrades += warehouseUpgradeCost(def, l, cityMultiplier);
+  }
+  return Math.round((base + upgrades) * 0.5);
 }
 
 export function warehouseCostLines(def: WarehouseDef, cityMultiplier: number = 1): LedgerLine[] {

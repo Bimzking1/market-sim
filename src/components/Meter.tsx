@@ -36,15 +36,21 @@ export function DualMeter({ supply, demand }: { supply: number; demand: number }
   const dPct = (demand / max) * 100;
 
   return (
-    <div className="w-24 space-y-1">
+    <div className="w-24 space-y-1 sm:w-28">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-mist-400 w-7">S</span>
+        <span className="text-[10px] text-mist-400 w-7 sm:w-12 sm:text-[11px]">
+          <span className="sm:hidden">S</span>
+          <span className="hidden sm:inline">Supply</span>
+        </span>
         <div className="flex-1 h-1.5 bg-ink-700">
           <div className="h-full bg-jade-400/70" style={{ width: `${sPct}%` }} />
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-mist-400 w-7">D</span>
+        <span className="text-[10px] text-mist-400 w-7 sm:w-12 sm:text-[11px]">
+          <span className="sm:hidden">D</span>
+          <span className="hidden sm:inline">Demand</span>
+        </span>
         <div className="flex-1 h-1.5 bg-ink-700">
           <div className="h-full bg-rust-400/70" style={{ width: `${dPct}%` }} />
         </div>

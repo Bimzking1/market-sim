@@ -5,6 +5,8 @@ import { SplashScreen } from "./pages/SplashScreen";
 import { IntroScreen } from "./pages/IntroScreen";
 import { Dashboard } from "./pages/Dashboard";
 import { Market } from "./pages/Market";
+import { RemoteMarket } from "./pages/RemoteMarket";
+import { History } from "./pages/History";
 import { Map } from "./pages/Map";
 import { Garage } from "./pages/Garage";
 import { WarehousePage } from "./pages/Warehouse";
@@ -38,6 +40,8 @@ export default function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/market" element={<Market />} />
+          <Route path="/market-remote" element={<RemoteMarket />} />
+          <Route path="/history" element={<History />} />
           <Route path="/map" element={<Map />} />
           <Route path="/garage" element={<Garage />} />
           <Route path="/inventory" element={<Inventory />} />
